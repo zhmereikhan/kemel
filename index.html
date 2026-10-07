@@ -316,6 +316,8 @@ function authView(){
   </div>`;
 }
 
+// a Face ID sign-in less than ~3 minutes ago also covers the check-in (the server checks the same rule)
+function freshLogin(){ return !!S.loginAt && Date.now() - S.loginAt < 170 * 1000; }
 function distM(lat1, lng1, lat2, lng2){
   const R = 6371000, r = x => x * Math.PI / 180;
   const a = Math.sin(r(lat2-lat1)/2)**2 + Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(r(lng2-lng1)/2)**2;
@@ -335,13 +337,17 @@ function pendView(sch){
   }
   const needQr = !p.qr && (p.needQr || ((state === 'ok' || state === 'near') && (sch.qr_required || state === 'near')));
   const qrLine = p.qr ? `<span style="${okS}">✓ оқылды</span>` : needQr ? `<span style="${warnS}">сканерлеу керек</span>` : '<span class="muted">керек емес</span>';
-  const ready = (state === 'ok' || state === 'near') && !needQr && S.authOpts && !S.busy;
+  const fresh = freshLogin();
+  const ready = (state === 'ok' || state === 'near') && !needQr && (fresh || S.authOpts) && !S.busy;
   let action = '';
   if (state === 'poserr') action = `<div class="notice n-bad small">${esc(p.posErr)}</div><button class="btn btn-light" onclick="A.prepare('${p.kind}', S.pend.qr)">Қайта тексеру</button>`;
   else if (state === 'far') action = `<div class="notice n-bad small">Сіз мектеп аумағынан тыс жердесіз. Мектепке келгенде қайталаңыз.</div><button class="btn btn-light" onclick="A.prepare('${p.kind}', S.pend.qr)">Қайта тексеру</button>`;
   else if (needQr) action = `<div class="notice n-late small">${sch.qr_required ? 'Мектепте QR-код міндетті.' : 'Ғимарат ішінде GPS дәл анықтамады.'} Кіреберістегі QR-кодты сканерлеңіз.</div>
       <button class="btn btn-dark big" onclick="A.scanForPend()">QR-кодты сканерлеу</button>`;
-  else action = `<button class="btn btn-main big" onclick="A.confirm()" style="display:flex;align-items:center;justify-content:center;gap:10px" ${ready?'':'disabled'}>${FACE_ICON} Face ID-мен растау</button>`;
+  else action = fresh
+    ? `<button class="btn btn-main big" onclick="A.confirm()" ${ready?'':'disabled'}>${p.kind==='in'?'Келдім деп растау':'Кеттім деп растау'}</button>
+       <div class="small muted" style="text-align:center">Жаңа ғана Face ID-мен кірдіңіз, қайта сұралмайды.</div>`
+    : `<button class="btn btn-main big" onclick="A.confirm()" style="display:flex;align-items:center;justify-content:center;gap:10px" ${ready?'':'disabled'}>${FACE_ICON} Face ID-мен растау</button>`;
   return `<section class="card" style="border:2px solid var(--accent)">
       <h2 style="font-size:20px">${p.kind==='in'?'Келгеніңізді растаңыз':'Кеткеніңізді растаңыз'}</h2>
       <div class="row" style="justify-content:space-between"><span>Орналасу</span>${locLine}</div>
@@ -620,6 +626,7 @@ const A = {
   },
   async afterAuth(r){
     touchActivity._t = 0; touchActivity();
+    S.loginAt = Date.now();
     S.token = r.token; ls('kemel_token', r.token); S.profile = r.profile;
     S.tab = 'me';
     await A.loadMe();
@@ -662,6 +669,13 @@ const A = {
   },
   async confirm(){
     const p = S.pend; if (!p || !p.pos) return;
+    if (freshLogin()) {
+      S.busy = true; render();
+      const r = await rpc('check_fresh', { p_token: S.token, p_device: deviceId(), p_kind: p.kind, p_qr: p.qr || null, p_lat: p.pos.lat, p_lng: p.pos.lng });
+      S.busy = false;
+      if (r.need_face) { S.loginAt = 0; freshAuthOptions().then(render); render(); toast(r.msg); return; }
+      return A.afterCheck(p, r);
+    }
     const o = takeAuthOptions();
     if (!o) { freshAuthOptions().then(render); toast('Қайта басыңыз.'); return; }
     let resp;
@@ -670,7 +684,11 @@ const A = {
     const r = await fn({ action:'auth_verify', purpose: p.kind, response: resp, token: S.token, device: deviceId(),
       qr: p.qr, lat: p.pos.lat, lng: p.pos.lng });
     S.busy = false;
+    return A.afterCheck(p, r);
+  },
+  afterCheck(p, r){
     if (!r.ok) {
+      if (r.logout) { lockScreen(false); toast(r.msg, 'bad'); return; }
       if (r.need_qr && S.pend) S.pend.needQr = true;
       freshAuthOptions().then(render); render(); toast(r.msg, 'bad'); return;
     }
@@ -838,7 +856,7 @@ function lockScreen(showMsg){
   const t = S.token;
   if (t) rpc('logout', { p_token: t });
   S.token = null; S.profile = null; S.admin = null; S.today = null; S.pend = null; S.ts = null;
-  S.authTab = 'login'; S.reg = null;
+  S.authTab = 'login'; S.reg = null; S.loginAt = 0;
   ls('kemel_token', null);
   document.querySelectorAll('.overlay').forEach(o => o.remove());
   render();
