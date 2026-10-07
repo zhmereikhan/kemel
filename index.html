@@ -104,6 +104,7 @@ table.ts td.we{background:#F1F3F7}
 <script>
 const SB_URL = 'https://gzupbqtvfchgzxevkahx.supabase.co';
 const SB_KEY = 'sb_publishable_2v6DTUcUYh4vPeH0_PHfSg_gZ0xx4i_';
+const FN_URL = SB_URL + '/functions/v1/auth';
 
 const POSITIONS = ['Директор','Оқу ісі орынбасары','Тәрбие ісі орынбасары','Ғылыми-әдістемелік орынбасар','Шаруашылық меңгерушісі',
   'Математика мұғалімі','Физика мұғалімі','Информатика мұғалімі','Қазақ тілі мен әдебиеті мұғалімі','Орыс тілі мен әдебиеті мұғалімі',
@@ -113,7 +114,8 @@ const LATE_REASONS = ['Көлік кептелісі','Денсаулық','Әк
 const ABS_REASONS = ['Ауырдым','Іссапар','Отбасылық жағдай','Басқа'];
 const EVENT_TITLES = {
   device_mismatch:'Бөтен телефоннан кіру', device_taken_login:'Басқаның телефонынан кіру',
-  device_taken_register:'Басқаның телефонынан тіркелу', outside:'Мектептен тыс белгілену', bad_qr:'Жарамсыз QR-код'
+  device_taken_register:'Басқаның телефонынан тіркелу', outside:'Мектептен тыс белгілену', bad_qr:'Жарамсыз QR-код',
+  other_face:'Басқа адамның Face ID-імен белгілену'
 };
 
 // ---------- utilities ----------
@@ -137,6 +139,66 @@ async function rpc(fn, args){
   if (!r.ok) return { ok:false, msg:'Сервер қатесі (' + r.status + '). Кейінірек қайталаңыз.' };
   return r.json();
 }
+async function fn(body){
+  let r;
+  try {
+    r = await fetch(FN_URL, { method:'POST', headers:{ 'apikey': SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+  } catch(e) { return { ok:false, msg:'Интернет байланысын тексеріңіз.' }; }
+  if (!r.ok) return { ok:false, msg:'Сервер қатесі (' + r.status + '). Кейінірек қайталаңыз.' };
+  return r.json();
+}
+
+// ---------- Face ID (WebAuthn / passkey) ----------
+const faceSupported = !!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create);
+function b64uToBuf(s){ s = s.replace(/-/g,'+').replace(/_/g,'/'); while (s.length % 4) s += '='; const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+function bufToB64u(b){ const u = new Uint8Array(b); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+async function faceCreate(o){
+  const pk = Object.assign({}, o, { challenge: b64uToBuf(o.challenge), user: Object.assign({}, o.user, { id: b64uToBuf(o.user.id) }),
+    excludeCredentials: (o.excludeCredentials || []).map(c => Object.assign({}, c, { id: b64uToBuf(c.id) })) });
+  delete pk.hints;
+  const c = await navigator.credentials.create({ publicKey: pk });
+  return { id: c.id, rawId: bufToB64u(c.rawId), type: c.type,
+    response: { clientDataJSON: bufToB64u(c.response.clientDataJSON), attestationObject: bufToB64u(c.response.attestationObject),
+      transports: c.response.getTransports ? c.response.getTransports() : [] },
+    clientExtensionResults: c.getClientExtensionResults ? c.getClientExtensionResults() : {}, authenticatorAttachment: c.authenticatorAttachment };
+}
+async function faceGet(o){
+  const pk = Object.assign({}, o, { challenge: b64uToBuf(o.challenge), allowCredentials: (o.allowCredentials || []).map(c => Object.assign({}, c, { id: b64uToBuf(c.id) })) });
+  delete pk.hints;
+  const c = await navigator.credentials.get({ publicKey: pk });
+  return { id: c.id, rawId: bufToB64u(c.rawId), type: c.type,
+    response: { clientDataJSON: bufToB64u(c.response.clientDataJSON), authenticatorData: bufToB64u(c.response.authenticatorData),
+      signature: bufToB64u(c.response.signature), userHandle: c.response.userHandle ? bufToB64u(c.response.userHandle) : undefined },
+    clientExtensionResults: c.getClientExtensionResults ? c.getClientExtensionResults() : {}, authenticatorAttachment: c.authenticatorAttachment };
+}
+function faceErr(e){
+  if (e && e.name === 'NotAllowedError') return 'Face ID болдырылмады немесе уақыты өтті. Қайта басыңыз.';
+  if (e && e.name === 'InvalidStateError') return 'Бұл телефонда Face ID бұрын орнатылған. «Кіру» батырмасын басыңыз.';
+  if (e && e.name === 'SecurityError') return 'Сайтты тек zhmereikhan.github.io/kemel мекенжайынан ашыңыз.';
+  return 'Face ID қатесі: ' + ((e && e.message) || e);
+}
+// options are fetched before the tap, because Safari only allows Face ID straight from a button press
+async function freshAuthOptions(){
+  if (S.authOpts && Date.now() - S.authOpts.at < 4 * 60 * 1000) return S.authOpts.options;
+  const r = await fn({ action:'auth_options' });
+  if (!r.ok) { toast(r.msg, 'bad'); return null; }
+  S.authOpts = { options: r.options, at: Date.now() };
+  return r.options;
+}
+function takeAuthOptions(){
+  const o = S.authOpts && Date.now() - S.authOpts.at < 4 * 60 * 1000 ? S.authOpts.options : null;
+  S.authOpts = null;
+  return o;
+}
+function fmtPhone(v){
+  let d = v.replace(/\D/g, '');
+  if (d.startsWith('8')) d = '7' + d.slice(1);
+  if (!d.startsWith('7')) d = '7' + d;
+  d = d.slice(0, 11);
+  const p = [d.slice(1,4), d.slice(4,7), d.slice(7,9), d.slice(9,11)].filter(Boolean);
+  return '+7 ' + p.join(' ');
+}
+
 function toast(msg, kind){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -161,6 +223,7 @@ function fmtDay(iso){ const d = new Date(iso + 'T00:00:00'); return d.getDate() 
 const S = {
   token: ls('kemel_token'), profile: null, today: null,
   authTab: 'login', pendingQr: null, busy: false,
+  authOpts: null, reg: null, pend: null,
   lateReason: null, absReason: null,
   tab: 'me', admin: null, adminDay: null, filter: 'all',
   ts: null, tsYear: null, tsMonth: null
@@ -205,27 +268,50 @@ function tabsView(){
   return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Менің белгілеуім')}${t('today','Бүгін')}${t('approve','Растау',pend)}${t('events','Күдікті әрекеттер',ev)}${t('staff','Қызметкерлер')}${t('ts','Табель')}${t('settings','Баптаулар')}</nav>`;
 }
 
+const FACE_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3H5a2 2 0 0 0-2 2v2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M3 17v2a2 2 0 0 0 2 2h2"/><path d="M9 9v1"/><path d="M15 9v1"/><path d="M12 9v4h-1"/><path d="M9 16c1.7 1.3 4.3 1.3 6 0"/></svg>`;
+
 function authView(){
-  const reg = S.authTab === 'register';
+  const tab = S.authTab;
   const posOpts = POSITIONS.map(p => `<option value="${esc(p)}">`).join('');
+  const tb = (id, label) => `<button class="tab ${tab===id?'on':''}" style="flex:1;padding:10px 8px" onclick="A.authTab('${id}')">${label}</button>`;
+  const phoneInput = `<label>Телефон нөміріңіз<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required value="+7 " oninput="this.value=fmtPhone(this.value)"></label>`;
+  let body = '';
+  if (!faceSupported) {
+    body = `<div class="card"><div class="notice n-late">Бұл браузер Face ID-ді қолдамайды. Сайтты Safari немесе Chrome-да ашыңыз.</div>
+      <button class="btn btn-dark" onclick="A.copyLink()">Сілтемені көшіру</button>
+      <div class="small muted">Көшіргеннен кейін Safari-ді ашып, мекенжай жолына қойыңыз.</div></div>`;
+  } else if (S.reg) {
+    body = `<div class="card"><h2 style="font-size:20px">${esc(S.reg.full_name)}</h2>
+      <div class="muted">Енді Face ID орнатыңыз. Бұдан былай кіргенде және «Келдім/Кеттім» деп белгіленгенде Face ID сұралады.</div>
+      <button class="btn btn-main big" onclick="A.faceRegister()" style="display:flex;align-items:center;justify-content:center;gap:10px" ${S.busy?'disabled':''}>${FACE_ICON} Face ID орнату</button>
+      <button class="btn btn-light" onclick="S.reg=null;render()">Артқа</button></div>`;
+  } else if (tab === 'login') {
+    body = `<div class="card"><div class="muted">Тіркелген болсаңыз, Face ID арқылы кіріңіз. Құпиясөз керек емес.</div>
+      <button class="btn btn-dark big" onclick="A.faceLogin()" style="display:flex;align-items:center;justify-content:center;gap:10px" ${S.busy?'disabled':''}>${FACE_ICON} Face ID арқылы кіру</button>
+      <div class="small muted">Телефоныңызды ауыстырсаңыз немесе Face ID табылмаса, «Жаңа телефон» бөлімін қолданыңыз.</div></div>`;
+  } else if (tab === 'register') {
+    body = `<form class="card" onsubmit="event.preventDefault(); A.prepareRegister(this)">
+      <label>Аты-жөніңіз<input name="full_name" autocomplete="name" required placeholder="Мысалы: Әлиева Гүлнар Ахметқызы"></label>
+      <label>Лауазымыңыз<input name="position" list="positions" required placeholder="Тізімнен таңдаңыз немесе жазыңыз"><datalist id="positions">${posOpts}</datalist></label>
+      ${phoneInput}
+      <details><summary class="small muted" style="cursor:pointer;padding:6px 0">Әкімшілік кодым бар</summary>
+        <label style="margin-top:8px">Әкімшілік коды<input name="admin_code" autocomplete="off" placeholder="Тек басшылыққа"></label></details>
+      <button class="btn btn-dark" type="submit" ${S.busy?'disabled':''}>Жалғастыру</button>
+    </form>`;
+  } else {
+    body = `<form class="card" onsubmit="event.preventDefault(); A.prepareRecover(this)">
+      <div class="muted">Телефоныңызды ауыстырсаңыз немесе Face ID жұмыс істемесе: әкімшіліктен 6 таңбалы код алып, осында енгізіңіз.</div>
+      ${phoneInput}
+      <label>Әкімшіліктен алған код<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="______"></label>
+      <button class="btn btn-dark" type="submit" ${S.busy?'disabled':''}>Жалғастыру</button>
+    </form>`;
+  }
   return `<header class="topbar"><div class="wrap"><div><div class="brand">КЕМЕЛ</div><div class="who">Қызметкерлердің белгіленуі</div></div></div></header>
   <div class="wrap" style="max-width:460px">
    <div class="stack">
-    <div class="row" role="tablist" style="background:#fff;border-radius:14px;padding:4px;gap:4px">
-      <button class="tab ${!reg?'on':''}" style="flex:1" onclick="A.authTab('login')">Кіру</button>
-      <button class="tab ${reg?'on':''}" style="flex:1" onclick="A.authTab('register')">Тіркелу</button>
-    </div>
+    ${S.reg || !faceSupported ? '' : `<div class="row" role="tablist" style="background:#fff;border-radius:14px;padding:4px;gap:4px">${tb('login','Кіру')}${tb('register','Тіркелу')}${tb('recover','Жаңа телефон')}</div>`}
     ${S.pendingQr ? `<div class="notice n-info">QR-код оқылды. Белгілену үшін алдымен кіріңіз.</div>` : ''}
-    <form class="card" onsubmit="event.preventDefault(); A.${reg?'register':'login'}(this)">
-      ${reg ? `<label>Аты-жөніңіз<input name="full_name" autocomplete="name" required placeholder="Мысалы: Әлиева Гүлнар Ахметқызы"></label>
-      <label>Лауазымыңыз<input name="position" list="positions" required placeholder="Тізімнен таңдаңыз немесе жазыңыз"><datalist id="positions">${posOpts}</datalist></label>` : ''}
-      <label>Телефон нөміріңіз<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="+7 7__ ___ __ __"></label>
-      <label>Құпиясөз<input name="password" type="password" autocomplete="${reg?'new-password':'current-password'}" required minlength="6" placeholder="Кемінде 6 таңба"></label>
-      ${reg ? `<details><summary class="small muted" style="cursor:pointer;padding:6px 0">Әкімшілік кодым бар</summary>
-        <label style="margin-top:8px">Әкімшілік коды<input name="admin_code" autocomplete="off" placeholder="Тек директор мен орынбасарларға"></label></details>
-        <div class="notice n-late small">Назар аударыңыз: аккаунтыңыз осы телефонға байланады. Белгілену тек осы телефоннан мүмкін болады.</div>` : ''}
-      <button class="btn btn-dark" type="submit" ${S.busy?'disabled':''}>${reg?'Тіркелу':'Кіру'}</button>
-    </form>
+    ${body}
    </div>
   </div>`;
 }
@@ -269,10 +355,18 @@ function meView(){
       main += `<div class="notice n-ok">Жұмыс күні аяқталды. Сау болыңыз!</div>`;
     }
   }
-  if (S.pendingQr && at && at.check_in && !at.check_out) {
-    main = `<div class="notice n-info">QR-код оқылды. Кетіп бара жатсаңыз, растаңыз:</div>
-      <button class="btn btn-main big" onclick="A.doAction('out', S.pendingQr)">Кеттім деп белгілеу</button>
-      <button class="btn btn-light" onclick="S.pendingQr=null;render()">Болдырмау</button>` + main;
+  if (S.pend) {
+    const p = S.pend;
+    const loc = p.posErr ? `<span style="color:var(--bad);font-weight:700">✕ ${esc(p.posErr)}</span>`
+      : p.pos ? `<span style="color:var(--ok);font-weight:700">✓ анықталды (±${Math.round(p.pos.acc)} м)</span>` : '<span class="muted">тексерілуде…</span>';
+    const ready = p.pos && S.authOpts && !S.busy;
+    main = `<section class="card" style="border:2px solid var(--accent)">
+      <h2 style="font-size:20px">${p.kind==='in'?'Келгеніңізді растаңыз':'Кеткеніңізді растаңыз'}</h2>
+      <div class="row" style="justify-content:space-between"><span>QR-код</span><span style="color:var(--ok);font-weight:700">✓ оқылды</span></div>
+      <div class="row" style="justify-content:space-between"><span>Орналасу</span>${loc}</div>
+      ${p.posErr ? `<button class="btn btn-light btn-sm" onclick="A.prepare('${p.kind}', S.pend.qr)">Қайта тексеру</button>` : ''}
+      <button class="btn btn-main big" onclick="A.confirm()" style="display:flex;align-items:center;justify-content:center;gap:10px" ${ready?'':'disabled'}>${FACE_ICON} Face ID-мен растау</button>
+      <button class="btn btn-light" onclick="S.pend=null;render()">Болдырмау</button></section>` + main;
   }
   return `<div class="stack" style="max-width:520px;margin:0 auto">
     <div class="muted">${t.day ? fmtDay(t.day) : ''}</div>${main}</div>`;
@@ -345,16 +439,16 @@ function staffView(){
   if (!a) return '<div class="loading">Жүктелуде…</div>';
   const me = S.profile.id;
   const rows = a.staff.map(s => `<div class="li"><div class="main"><b>${esc(s.full_name)} ${s.role==='admin'?'<span class="badge b-info">әкімші</span>':''}</b>
-    <span class="small muted">${esc(s.position)} · +${esc(s.phone)} · ${s.device_bound?'телефонға байланған':'телефон байланбаған'}</span></div>
+    <span class="small muted">${esc(s.position)} · +${esc(s.phone)} · ${s.faceid?'Face ID орнатылған':'Face ID орнатылмаған'}</span></div>
     ${s.id===me ? '<span class="small muted">Сіз</span>' : `<div class="row">
-      <button class="btn btn-light btn-sm" onclick="A.resetDevice('${s.id}')">Телефонды босату</button>
+      <button class="btn btn-light btn-sm" onclick="A.recoveryCode('${s.id}')">Жаңа телефон коды</button>
       <button class="btn btn-light btn-sm" onclick="A.role('${s.id}','${s.role==='admin'?'staff':'admin'}')">${s.role==='admin'?'Әкімшіліктен алу':'Әкімші ету'}</button>
       <button class="btn btn-bad btn-sm" onclick="A.userStatus('${s.id}','blocked')">Бұғаттау</button></div>`}</div>`).join('');
   const blocked = a.blocked_users.map(s => `<div class="li"><div class="main"><b>${esc(s.full_name)}</b><span class="small muted">${esc(s.position)} · +${esc(s.phone)}</span></div>
     <button class="btn btn-light btn-sm" onclick="A.userStatus('${s.id}','active')">Қайта белсендіру</button></div>`).join('');
   return `<div class="stack">
     <h1 class="display" style="font-size:24px">Қызметкерлер (${a.staff.length})</h1>
-    <div class="notice n-info small">Қызметкер телефонын ауыстырса, «Телефонды босату» батырмасын басыңыз. Келесі кіргенде аккаунт жаңа телефонға байланады.</div>
+    <div class="notice n-info small">Қызметкер телефонын ауыстырса немесе Face ID жұмыс істемесе, «Жаңа телефон коды» батырмасын басыңыз. Шыққан кодты қызметкер «Жаңа телефон» бөлімінде енгізіп, Face ID-ді қайта орнатады.</div>
     <section class="card"><div class="list">${rows || '<div class="muted">Қызметкер жоқ.</div>'}</div></section>
     ${blocked ? `<section class="card"><h2 style="font-size:18px">Бұғатталғандар</h2><div class="list">${blocked}</div></section>` : ''}
   </div>`;
@@ -453,23 +547,46 @@ function openScanner(onCode){
 
 // ---------- actions ----------
 const A = {
-  authTab(t){ S.authTab = t; render(); },
-  async login(f){
+  authTab(t){ S.authTab = t; S.reg = null; render(); if (t === 'login') freshAuthOptions(); },
+  copyLink(){
+    const url = 'https://zhmereikhan.github.io/kemel/';
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Сілтеме көшірілді.', 'ok'), () => prompt('Сілтемені көшіріңіз:', url));
+  },
+  async faceLogin(){
+    const o = takeAuthOptions();
+    if (!o) { toast('Дайындалып жатыр, бір секундтан соң қайта басыңыз.'); freshAuthOptions(); return; }
+    let resp;
+    try { resp = await faceGet(o); } catch(e) { freshAuthOptions(); toast(faceErr(e), 'bad'); return; }
     S.busy = true; render();
-    const r = await rpc('login', { p_phone: f.phone.value, p_password: f.password.value, p_device: deviceId() });
-    S.busy = false;
+    const r = await fn({ action:'auth_verify', purpose:'login', response: resp, device: deviceId() });
+    S.busy = false; freshAuthOptions();
     if (!r.ok) { render(); toast(r.msg, 'bad'); return; }
     await A.afterAuth(r);
   },
-  async register(f){
-    S.busy = true;
-    const vals = { p_phone: f.phone.value, p_password: f.password.value, p_full_name: f.full_name.value, p_position: f.position.value,
-      p_device: deviceId(), p_admin_code: (f.admin_code && f.admin_code.value.trim()) || null };
-    render();
-    const r = await rpc('register', vals);
+  async prepareRegister(f){
+    S.busy = true; render();
+    const r = await fn({ action:'register_options', full_name: f.full_name.value, position: f.position.value,
+      phone: f.phone.value, admin_code: (f.admin_code && f.admin_code.value.trim()) || null });
     S.busy = false;
     if (!r.ok) { render(); toast(r.msg, 'bad'); return; }
-    if (r.pending) { S.authTab = 'login'; render(); toast(r.msg, 'ok'); return; }
+    S.reg = { options: r.options, full_name: r.full_name, at: Date.now() }; render();
+  },
+  async prepareRecover(f){
+    S.busy = true; render();
+    const r = await fn({ action:'register_options', phone: f.phone.value, recovery_code: f.code.value.trim() });
+    S.busy = false;
+    if (!r.ok) { render(); toast(r.msg, 'bad'); return; }
+    S.reg = { options: r.options, full_name: r.full_name, at: Date.now() }; render();
+  },
+  async faceRegister(){
+    if (!S.reg || Date.now() - S.reg.at > 4 * 60 * 1000) { S.reg = null; render(); toast('Уақыт өтіп кетті, қайта толтырыңыз.', 'bad'); return; }
+    let resp;
+    try { resp = await faceCreate(S.reg.options); } catch(e) { toast(faceErr(e), 'bad'); return; }
+    S.busy = true; render();
+    const r = await fn({ action:'register_verify', response: resp, device: deviceId() });
+    S.busy = false; S.reg = null;
+    if (!r.ok) { render(); toast(r.msg, 'bad'); return; }
+    if (r.pending) { S.authTab = 'login'; render(); freshAuthOptions(); toast(r.msg, 'ok'); return; }
     await A.afterAuth(r);
   },
   async afterAuth(r){
@@ -485,28 +602,44 @@ const A = {
       render(); toast(r.msg, 'bad'); return;
     }
     S.profile = r.profile; S.today = r.today; render();
-    // opened by scanning the school QR with the phone camera: check in automatically
-    if (S.pendingQr && !(S.today.attendance && S.today.attendance.check_in)) A.doAction('in', S.pendingQr);
+    // opened by scanning the school QR with the phone camera
+    if (S.pendingQr) {
+      const at = S.today.attendance;
+      const qr = S.pendingQr; S.pendingQr = null;
+      if (!at || !at.check_in) A.prepare('in', qr);
+      else if (!at.check_out) A.prepare('out', qr);
+      else toast('Бүгін келген және кеткен уақытыңыз белгіленген.');
+    }
   },
   async logout(){
-    if (!confirm('Шығасыз ба? Қайта кіру тек осы телефоннан мүмкін болады.')) return;
+    if (!confirm('Шығасыз ба? Қайта Face ID арқылы кіре аласыз.')) return;
     await rpc('logout', { p_token: S.token });
-    S.token = null; S.profile = null; S.admin = null; ls('kemel_token', null); render();
+    S.token = null; S.profile = null; S.admin = null; ls('kemel_token', null); render(); freshAuthOptions();
   },
-  scan(kind){ openScanner(code => A.doAction(kind, code)); },
-  async doAction(kind, qr){
+  scan(kind){ openScanner(code => A.prepare(kind, code)); },
+  // step 1 after the QR: get location and Face ID options ready, then show the confirm button
+  async prepare(kind, qr){
+    S.pend = { kind, qr, pos: null, posErr: null }; S.authOpts = null; render();
+    window.scrollTo(0, 0);
+    const [pos] = await Promise.all([getPosition(), freshAuthOptions()]);
+    if (!S.pend) return;
+    if (pos.err) S.pend.posErr = pos.err; else S.pend.pos = pos;
+    render();
+  },
+  // step 2: Face ID straight from the button press, then send everything
+  async confirm(){
+    const p = S.pend; if (!p || !p.pos) return;
+    const o = takeAuthOptions();
+    if (!o) { freshAuthOptions().then(render); toast('Қайта басыңыз.'); return; }
+    let resp;
+    try { resp = await faceGet(o); } catch(e) { freshAuthOptions().then(render); toast(faceErr(e), 'bad'); return; }
     S.busy = true; render();
-    toast('Орналасуыңыз тексерілуде…');
-    const pos = await getPosition();
-    if (pos.err) { S.busy = false; render(); toast(pos.err, 'bad'); return; }
-    const r = await rpc(kind === 'in' ? 'check_in' : 'check_out',
-      { p_token: S.token, p_device: deviceId(), p_qr: qr, p_lat: pos.lat, p_lng: pos.lng });
-    S.busy = false; S.pendingQr = null;
-    if (!r.ok) {
-      if (r.logout) { S.token = null; S.profile = null; ls('kemel_token', null); }
-      render(); toast(r.msg, 'bad'); return;
-    }
-    S.today = r.today; render();
+    const r = await fn({ action:'auth_verify', purpose: p.kind, response: resp, token: S.token, device: deviceId(),
+      qr: p.qr, lat: p.pos.lat, lng: p.pos.lng });
+    S.busy = false;
+    if (!r.ok) { freshAuthOptions().then(render); render(); toast(r.msg, 'bad'); return; }
+    const kind = p.kind;
+    S.pend = null; S.today = r.today; render();
     if (r.already) toast('Бұл белгі бүгін бұрын қойылған.');
     else if (kind === 'in') toast(r.needs_reason ? 'Белгіленді. Кешігу себебін көрсетіңіз.' : 'Белгіленді! Жақсы жұмыс күні болсын.', 'ok');
     else toast('Кеткен уақытыңыз белгіленді.', 'ok');
@@ -566,12 +699,20 @@ const A = {
     if (!r.ok) { toast(r.msg, 'bad'); return; }
     toast('Сақталды.', 'ok'); A.loadAdmin();
   },
-  async resetDevice(id){
+  async recoveryCode(id){
     const p = (S.admin.staff.find(s => s.id === id) || {});
-    if (!confirm((p.full_name || 'Қызметкер') + ' аккаунтын телефоннан босату керек пе? Ол келесі кірген телефонға байланады.')) return;
-    const r = await rpc('admin_reset_device', { p_token: S.token, p_device: deviceId(), p_user: id });
+    if (!confirm((p.full_name || 'Қызметкер') + ' үшін жаңа телефонға Face ID орнату кодын жасау керек пе? Код орнатылғанда ескі телефондағы Face ID өшеді.')) return;
+    const r = await rpc('admin_recovery_code', { p_token: S.token, p_device: deviceId(), p_user: id });
     if (!r.ok) { toast(r.msg, 'bad'); return; }
-    toast('Телефон босатылды.', 'ok'); A.loadAdmin();
+    const ov = document.createElement('div');
+    ov.className = 'overlay';
+    ov.innerHTML = `<div class="sheet"><h2 style="font-size:18px">${esc(p.full_name || '')}</h2>
+      <div class="muted">Жаңа телефон коды (24 сағат жарамды):</div>
+      <div class="display" style="font-size:40px;letter-spacing:6px;text-align:center">${esc(r.code)}</div>
+      <div class="small muted">Қызметкер сайтта «Жаңа телефон» бөлімін ашып, телефон нөмірі мен осы кодты енгізеді, содан кейін Face ID орнатады. Кодты тек қызметкердің өзіне беріңіз.</div>
+      <button class="btn btn-dark">Жабу</button></div>`;
+    ov.querySelector('button').onclick = () => ov.remove();
+    document.body.appendChild(ov);
   },
   async absence(id, ok){
     const r = await rpc('admin_decide_absence', { p_token: S.token, p_device: deviceId(), p_absence: id, p_approve: ok });
@@ -644,7 +785,7 @@ const A = {
   const now = new Date(); S.tsYear = now.getFullYear(); S.tsMonth = now.getMonth() + 1;
   deviceId();
   if (S.token) { A.loadMe().then(() => { if (S.profile && S.profile.role === 'admin') A.loadAdmin(); }); }
-  else render();
+  else { render(); if (faceSupported) freshAuthOptions(); }
 })();
 </script>
 </body>
