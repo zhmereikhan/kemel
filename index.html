@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14213D">
+<title>Кемел · Белгілену</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --navy:#14213D; --navy2:#1F2E52; --accent:#E07A1F; --ground:#EEF1F5; --card:#FFFFFF;
+  --ink:#14213D; --muted:#5B6475; --line:#E3E7ED; --line2:#C3CBD8;
+  --ok-bg:#E6F2EC; --ok:#165C3A; --late-bg:#FDF0E2; --late:#8A4A0C;
+  --bad-bg:#FCEBE9; --bad:#8E1F17; --info-bg:#E8EEF8; --info:#1D4E89;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:'PT Sans',system-ui,sans-serif;font-size:16px;line-height:1.4}
+h1,h2,h3{margin:0}
+.display{font-family:'Unbounded',sans-serif;font-weight:700}
+button,input,select,textarea{font-family:inherit;font-size:16px}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.topbar{background:var(--navy);color:#fff;padding:16px;padding-top:max(16px,env(safe-area-inset-top))}
+.topbar .wrap{padding:0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-family:'Unbounded',sans-serif;font-weight:700;font-size:20px;letter-spacing:.5px}
+.who{font-size:14px;color:#C9D2E3}
+.linkbtn{background:none;border:none;color:#C9D2E3;text-decoration:underline;cursor:pointer;padding:8px;min-height:44px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:12px 16px 0;max-width:1100px;margin:0 auto;scrollbar-width:none}
+.tab{flex:0 0 auto;border:none;border-radius:999px;padding:10px 16px;background:#fff;color:var(--ink);cursor:pointer;min-height:44px;white-space:nowrap}
+.tab.on{background:var(--navy);color:#fff;font-weight:700}
+.tab .n{display:inline-block;margin-left:6px;background:var(--bad);color:#fff;border-radius:999px;padding:0 7px;font-size:13px;font-weight:700}
+.card{background:var(--card);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.btn{border:none;border-radius:14px;padding:16px 18px;font-weight:700;cursor:pointer;min-height:52px;font-size:17px}
+.btn-main{background:var(--accent);color:var(--navy)}
+.btn-dark{background:var(--navy);color:#fff}
+.btn-light{background:#fff;color:var(--navy);border:1px solid var(--line2)}
+.btn-ok{background:var(--ok);color:#fff}
+.btn-bad{background:#fff;color:var(--bad);border:1px solid #E5B4AF}
+.btn-sm{padding:10px 14px;min-height:44px;font-size:15px;border-radius:10px}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.big{font-size:19px;min-height:64px}
+label{font-size:15px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+input,select,textarea{border:1px solid var(--line2);border-radius:12px;padding:12px 14px;background:#fff;color:var(--ink);min-height:48px;width:100%}
+textarea{resize:vertical;min-height:80px}
+.badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:700;white-space:nowrap}
+.b-ok{background:var(--ok-bg);color:var(--ok)}
+.b-late{background:var(--late-bg);color:var(--late)}
+.b-bad{background:var(--bad-bg);color:var(--bad)}
+.b-info{background:var(--info-bg);color:var(--info)}
+.b-none{background:var(--ground);color:#3D4555;border:1px dashed #8A93A3}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border-radius:999px;padding:10px 16px;min-height:44px;cursor:pointer;background:#fff;color:var(--ink);border:1px solid var(--line2)}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.big-time{font-family:'Unbounded',sans-serif;font-weight:700;font-size:36px}
+.notice{border-radius:14px;padding:14px 16px;font-size:15px}
+.n-bad{background:var(--bad-bg);color:var(--bad)}
+.n-ok{background:var(--ok-bg);color:var(--ok)}
+.n-info{background:var(--info-bg);color:var(--info)}
+.n-late{background:var(--late-bg);color:var(--late)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.tile{background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px;border:2px solid transparent;cursor:pointer;text-align:left;min-height:44px}
+.tile.on{border-color:currentColor}
+.tile .v{font-family:'Unbounded',sans-serif;font-size:26px;font-weight:700}
+.list{display:flex;flex-direction:column}
+.li{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
+.li:first-child{border-top:none}
+.li .main{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.li .times{display:flex;gap:14px;font-size:15px}
+.tsbox{overflow-x:auto;background:#fff;border-radius:16px}
+table.ts{border-collapse:collapse;font-size:13px;min-width:100%}
+table.ts th,table.ts td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:center;white-space:nowrap}
+table.ts th:first-child,table.ts td:first-child{text-align:left;position:sticky;left:0;background:#fff;padding-left:14px;min-width:160px;white-space:normal}
+table.ts td.we{background:#F1F3F7}
+.c-A{color:var(--bad);font-weight:700;background:var(--bad-bg)}
+.c-S{color:var(--info);font-weight:700;background:var(--info-bg)}
+.c-B{color:var(--late);font-weight:700;background:var(--late-bg)}
+.c-q{color:var(--late);font-weight:700}
+#reader{width:100%;border-radius:16px;overflow:hidden;background:#0B1326;min-height:280px}
+.overlay{position:fixed;inset:0;background:rgba(10,16,32,.85);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.sheet{background:#fff;border-radius:20px;padding:20px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:92vw;padding:14px 18px;border-radius:14px;color:#fff;font-weight:700;z-index:60;display:none;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+.qrbox{background:#fff;padding:16px;border-radius:12px;display:inline-block;align-self:flex-start}
+.loading{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--muted)}
+@media print{
+  body *{visibility:hidden}
+  #printArea,#printArea *{visibility:visible}
+  #printArea{position:absolute;left:0;top:0;width:100%;text-align:center;padding-top:40px}
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Жүктелуде…</div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="printArea" style="display:none"></div>
+
+<script>
+const SB_URL = 'https://gzupbqtvfchgzxevkahx.supabase.co';
+const SB_KEY = 'sb_publishable_2v6DTUcUYh4vPeH0_PHfSg_gZ0xx4i_';
+
+const POSITIONS = ['Директор','Оқу ісі орынбасары','Тәрбие ісі орынбасары','Ғылыми-әдістемелік орынбасар','Шаруашылық меңгерушісі',
+  'Математика мұғалімі','Физика мұғалімі','Информатика мұғалімі','Қазақ тілі мен әдебиеті мұғалімі','Орыс тілі мен әдебиеті мұғалімі',
+  'Ағылшын тілі мұғалімі','Химия мұғалімі','Биология мұғалімі','География мұғалімі','Тарих мұғалімі','Бастауыш сынып мұғалімі',
+  'Дене шынықтыру мұғалімі','Психолог','Әлеуметтік педагог','Кітапханашы','Медбике','Іс жүргізуші','Бухгалтер','Күзетші','Техникалық қызметкер'];
+const LATE_REASONS = ['Көлік кептелісі','Денсаулық','Әкімшілік рұқсатымен','Отбасылық жағдай','Басқа'];
+const ABS_REASONS = ['Ауырдым','Іссапар','Отбасылық жағдай','Басқа'];
+const EVENT_TITLES = {
+  device_mismatch:'Бөтен телефоннан кіру', device_taken_login:'Басқаның телефонынан кіру',
+  device_taken_register:'Басқаның телефонынан тіркелу', outside:'Мектептен тыс белгілену', bad_qr:'Жарамсыз QR-код'
+};
+
+// ---------- utilities ----------
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch(e){ return null; } }
+function deviceId(){
+  let d = ls('kemel_device');
+  if (!d) {
+    d = (crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join(''));
+    ls('kemel_device', d);
+  }
+  return d;
+}
+async function rpc(fn, args){
+  let r;
+  try {
+    r = await fetch(SB_URL + '/rest/v1/rpc/' + fn, {
+      method:'POST', headers:{ 'apikey': SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(args || {})
+    });
+  } catch(e) { return { ok:false, msg:'Интернет байланысын тексеріңіз.' }; }
+  if (!r.ok) return { ok:false, msg:'Сервер қатесі (' + r.status + '). Кейінірек қайталаңыз.' };
+  return r.json();
+}
+function toast(msg, kind){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = kind === 'bad' ? '#8E1F17' : kind === 'ok' ? '#165C3A' : '#14213D';
+  t.style.display = 'block';
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 4200);
+}
+function getPosition(){
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve({ err:'Телефоныңыз геолокацияны қолдамайды.' });
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy }),
+      e => resolve({ err: e.code === 1 ? 'Геолокацияға рұқсат берілмеді. Браузер баптауынан рұқсат беріңіз.' : 'Орналасуды анықтау мүмкін болмады. Қайталап көріңіз.' }),
+      { enableHighAccuracy:true, timeout:20000, maximumAge:0 });
+  });
+}
+const KZ_MONTHS = ['қаңтар','ақпан','наурыз','сәуір','мамыр','маусым','шілде','тамыз','қыркүйек','қазан','қараша','желтоқсан'];
+const KZ_DAYS = ['жексенбі','дүйсенбі','сейсенбі','сәрсенбі','бейсенбі','жұма','сенбі'];
+function fmtDay(iso){ const d = new Date(iso + 'T00:00:00'); return d.getDate() + ' ' + KZ_MONTHS[d.getMonth()] + ', ' + KZ_DAYS[d.getDay()]; }
+
+// ---------- state ----------
+const S = {
+  token: ls('kemel_token'), profile: null, today: null,
+  authTab: 'login', pendingQr: null, busy: false,
+  lateReason: null, absReason: null,
+  tab: 'me', admin: null, adminDay: null, filter: 'all',
+  ts: null, tsYear: null, tsMonth: null
+};
+
+// pick up the school QR when the page is opened by scanning it with the phone camera
+(function(){
+  const u = new URL(location.href);
+  const k = u.searchParams.get('k');
+  if (k) { S.pendingQr = k; u.searchParams.delete('k'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+})();
+
+// ---------- rendering ----------
+function render(){
+  const app = document.getElementById('app');
+  if (!S.token || !S.profile) { app.innerHTML = authView(); return; }
+  const isAdmin = S.profile.role === 'admin';
+  let body = '';
+  if (S.tab === 'me' || !isAdmin) body = meView();
+  else if (S.tab === 'today') body = todayView();
+  else if (S.tab === 'approve') body = approveView();
+  else if (S.tab === 'events') body = eventsView();
+  else if (S.tab === 'staff') body = staffView();
+  else if (S.tab === 'ts') body = tsView();
+  else if (S.tab === 'settings') body = settingsView();
+  app.innerHTML = topbar() + (isAdmin ? tabsView() : '') + '<div class="wrap">' + body + '</div>';
+  if (S.tab === 'settings' && isAdmin) drawQr();
+}
+
+function topbar(){
+  return `<header class="topbar"><div class="wrap">
+    <div><div class="brand">КЕМЕЛ</div><div class="who">${esc(S.profile.full_name)} · ${esc(S.profile.position)}</div></div>
+    <button class="linkbtn" onclick="A.logout()">Шығу</button>
+  </div></header>`;
+}
+
+function tabsView(){
+  const a = S.admin;
+  const pend = a ? a.pending_users.length + a.staff.filter(s => s.absence && s.absence.status === 'pending').length : 0;
+  const ev = a ? a.unseen_events : 0;
+  const t = (id, label, n) => `<button class="tab ${S.tab===id?'on':''}" onclick="A.go('${id}')">${label}${n?`<span class="n">${n}</span>`:''}</button>`;
+  return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Менің белгілеуім')}${t('today','Бүгін')}${t('approve','Растау',pend)}${t('events','Күдікті әрекеттер',ev)}${t('staff','Қызметкерлер')}${t('ts','Табель')}${t('settings','Баптаулар')}</nav>`;
+}
+
+function authView(){
+  const reg = S.authTab === 'register';
+  const posOpts = POSITIONS.map(p => `<option value="${esc(p)}">`).join('');
+  return `<header class="topbar"><div class="wrap"><div><div class="brand">КЕМЕЛ</div><div class="who">Қызметкерлердің белгіленуі</div></div></div></header>
+  <div class="wrap" style="max-width:460px">
+   <div class="stack">
+    <div class="row" role="tablist" style="background:#fff;border-radius:14px;padding:4px;gap:4px">
+      <button class="tab ${!reg?'on':''}" style="flex:1" onclick="A.authTab('login')">Кіру</button>
+      <button class="tab ${reg?'on':''}" style="flex:1" onclick="A.authTab('register')">Тіркелу</button>
+    </div>
+    ${S.pendingQr ? `<div class="notice n-info">QR-код оқылды. Белгілену үшін алдымен кіріңіз.</div>` : ''}
+    <form class="card" onsubmit="event.preventDefault(); A.${reg?'register':'login'}(this)">
+      ${reg ? `<label>Аты-жөніңіз<input name="full_name" autocomplete="name" required placeholder="Мысалы: Әлиева Гүлнар Ахметқызы"></label>
+      <label>Лауазымыңыз<input name="position" list="positions" required placeholder="Тізімнен таңдаңыз немесе жазыңыз"><datalist id="positions">${posOpts}</datalist></label>` : ''}
+      <label>Телефон нөміріңіз<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="+7 7__ ___ __ __"></label>
+      <label>Құпиясөз<input name="password" type="password" autocomplete="${reg?'new-password':'current-password'}" required minlength="6" placeholder="Кемінде 6 таңба"></label>
+      ${reg ? `<details><summary class="small muted" style="cursor:pointer;padding:6px 0">Әкімшілік кодым бар</summary>
+        <label style="margin-top:8px">Әкімшілік коды<input name="admin_code" autocomplete="off" placeholder="Тек директор мен орынбасарларға"></label></details>
+        <div class="notice n-late small">Назар аударыңыз: аккаунтыңыз осы телефонға байланады. Белгілену тек осы телефоннан мүмкін болады.</div>` : ''}
+      <button class="btn btn-dark" type="submit" ${S.busy?'disabled':''}>${reg?'Тіркелу':'Кіру'}</button>
+    </form>
+   </div>
+  </div>`;
+}
+
+function meView(){
+  const t = S.today || {};
+  const at = t.attendance, ab = t.absence;
+  let main = '';
+  if (!t.location_set) {
+    main += `<div class="notice n-late">Мектептің орны әлі белгіленбеген. ${S.profile.role==='admin' ? '«Баптаулар» бөлімінен белгілеңіз.' : 'Әкімшілік белгілегеннен кейін белгілене аласыз.'}</div>`;
+  }
+  if (ab && !(at && at.check_in)) {
+    const st = { pending:['Растауды күтуде','b-late'], approved:['Расталды','b-ok'], rejected:['Қабылданбады','b-bad'] }[ab.status];
+    main += `<section class="card"><div class="row" style="justify-content:space-between"><span class="muted small">Бүгінгі мәртебе</span><span class="badge ${st[1]}">${st[0]}</span></div>
+      <h2 style="font-size:20px">Келмеу себебі: ${esc(ab.reason)}</h2>${ab.note?`<div class="muted">${esc(ab.note)}</div>`:''}</section>
+      <button class="btn btn-light" onclick="A.openAbsence()">Себепті өзгерту</button>
+      <button class="btn btn-main big" onclick="A.scan('in')">Келдім · QR сканерлеу</button>`;
+  } else if (!at || !at.check_in) {
+    main += `<section class="card"><span class="muted small">Бүгінгі мәртебе</span><h2 style="font-size:20px">Әлі белгіленбедіңіз</h2>
+      <div class="muted">Жұмыс басталуы: ${esc(t.work_start || '08:00')}</div></section>
+      <button class="btn btn-main big" onclick="A.scan('in')" ${S.busy?'disabled':''}>Келдім · QR сканерлеу</button>
+      <button class="btn btn-light" onclick="A.openAbsence()">Бүгін келе алмаймын</button>
+      <div class="muted small">Кіреберістегі QR-кодты осы батырма арқылы немесе телефонның камерасымен сканерлеңіз. Сол сәтте телефоныңыздың мектеп аумағында екені тексеріледі.</div>`;
+  } else {
+    const late = at.late_min > 0;
+    const badge = late ? `<span class="badge b-late">Кешікті · ${at.late_min} мин</span>` : `<span class="badge b-ok">Уақытында</span>`;
+    main += `<section class="card"><div class="row" style="justify-content:space-between"><span class="muted small">Бүгінгі мәртебе</span>${badge}</div>
+      <div class="row" style="align-items:baseline;gap:8px"><span class="muted">Келдіңіз</span><span class="big-time">${esc(at.check_in)}</span></div>
+      ${at.check_out ? `<div class="row" style="align-items:baseline;gap:8px"><span class="muted">Кеттіңіз</span><span class="big-time">${esc(at.check_out)}</span></div>` : ''}
+      ${at.late_reason ? `<div class="muted small">Кешігу себебі: ${esc(at.late_reason)}</div>` : ''}
+      <div class="small" style="color:var(--ok)">Уақыт табельге жазылды.</div></section>`;
+    if (late && !at.late_reason) {
+      main += `<section class="card"><h2 style="font-size:18px">Кешігу себебін көрсетіңіз</h2>
+        <div class="chips">${LATE_REASONS.map(r => `<button class="chip ${S.lateReason===r?'on':''}" onclick="A.pickLate('${esc(r)}')">${esc(r)}</button>`).join('')}</div>
+        <label>Түсініктеме (міндетті емес)<textarea id="lateNote" rows="2"></textarea></label>
+        <button class="btn btn-dark" onclick="A.sendLate()" ${S.lateReason?'':'disabled'}>Жіберу</button></section>`;
+    }
+    if (!at.check_out) {
+      main += `<button class="btn btn-dark big" onclick="A.scan('out')" ${S.busy?'disabled':''}>Кеттім · QR сканерлеу</button>`;
+    } else {
+      main += `<div class="notice n-ok">Жұмыс күні аяқталды. Сау болыңыз!</div>`;
+    }
+  }
+  if (S.pendingQr && at && at.check_in && !at.check_out) {
+    main = `<div class="notice n-info">QR-код оқылды. Кетіп бара жатсаңыз, растаңыз:</div>
+      <button class="btn btn-main big" onclick="A.doAction('out', S.pendingQr)">Кеттім деп белгілеу</button>
+      <button class="btn btn-light" onclick="S.pendingQr=null;render()">Болдырмау</button>` + main;
+  }
+  return `<div class="stack" style="max-width:520px;margin:0 auto">
+    <div class="muted">${t.day ? fmtDay(t.day) : ''}</div>${main}</div>`;
+}
+
+// ---------- admin views ----------
+function statusOf(s){
+  if (s.check_in) return s.late_min > 0 ? 'late' : 'ok';
+  if (s.absence) return 'away';
+  return 'none';
+}
+function todayView(){
+  const a = S.admin;
+  if (!a) return '<div class="loading">Жүктелуде…</div>';
+  const counts = { all:a.staff.length, ok:0, late:0, away:0, none:0 };
+  a.staff.forEach(s => counts[statusOf(s)]++);
+  const tdef = [['all','Барлығы','#14213D'],['ok','Уақытында','#165C3A'],['late','Кешіккен','#8A4A0C'],['away','Себеппен жоқ','#1D4E89'],['none','Белгіленбеген','#8E1F17']];
+  const tiles = tdef.map(t => `<button class="tile ${S.filter===t[0]?'on':''}" style="color:${t[2]}" onclick="A.filter('${t[0]}')"><span class="small">${t[1]}</span><span class="v">${counts[t[0]]}</span></button>`).join('');
+  const rows = a.staff.filter(s => S.filter==='all' || statusOf(s)===S.filter).map(s => {
+    const st = statusOf(s);
+    let badge = st==='ok' ? '<span class="badge b-ok">Уақытында</span>' : st==='late' ? `<span class="badge b-late">Кешікті · ${s.late_min} мин</span>`
+      : st==='away' ? `<span class="badge b-info">${esc(s.absence.reason)}${s.absence.status==='pending'?' · растау күтуде':s.absence.status==='rejected'?' · қабылданбады':''}</span>` : '<span class="badge b-none">Белгіленбеген</span>';
+    const note = s.late_reason ? 'Себебі: ' + esc(s.late_reason) : (s.absence && s.absence.note ? esc(s.absence.note) : '');
+    return `<div class="li"><div class="main"><b>${esc(s.full_name)}</b><span class="small muted">${esc(s.position)}${note?' · '+note:''}</span></div>
+      <div class="times"><span>Келді: <b>${esc(s.check_in||'—')}</b></span><span>Кетті: <b>${esc(s.check_out||'—')}</b></span></div>${badge}</div>`;
+  }).join('') || '<div class="muted" style="padding:12px 0">Бұл сүзгі бойынша ешкім жоқ.</div>';
+  return `<div class="stack">
+    <div class="row" style="justify-content:space-between">
+      <h1 class="display" style="font-size:24px">Қатысу · ${fmtDay(a.day)}</h1>
+      <label style="flex-direction:row;align-items:center;gap:8px">Күн:<input type="date" value="${a.day}" onchange="A.setDay(this.value)" style="width:auto"></label>
+    </div>
+    <div class="tiles">${tiles}</div>
+    <section class="card"><div class="list">${rows}</div></section>
+    <button class="btn btn-light btn-sm" style="align-self:flex-start" onclick="A.refresh()">Жаңарту</button>
+  </div>`;
+}
+
+function approveView(){
+  const a = S.admin;
+  if (!a) return '<div class="loading">Жүктелуде…</div>';
+  const users = a.pending_users.map(u => `<div class="li"><div class="main"><b>${esc(u.full_name)}</b><span class="small muted">${esc(u.position)} · +${esc(u.phone)} · ${esc(u.created_at)}</span></div>
+    <div class="row"><button class="btn btn-bad btn-sm" onclick="A.userStatus('${u.id}','blocked')">Қабылдамау</button><button class="btn btn-ok btn-sm" onclick="A.userStatus('${u.id}','active')">Растау</button></div></div>`).join('');
+  const abs = a.staff.filter(s => s.absence && s.absence.status === 'pending').map(s => `<div class="li"><div class="main"><b>${esc(s.full_name)}</b>
+    <span class="small muted">${esc(s.absence.reason)}${s.absence.note?' · '+esc(s.absence.note):''}</span></div>
+    <div class="row"><button class="btn btn-bad btn-sm" onclick="A.absence(${s.absence.id},false)">Қабылдамау</button><button class="btn btn-ok btn-sm" onclick="A.absence(${s.absence.id},true)">Растау</button></div></div>`).join('');
+  return `<div class="stack">
+    <section class="card"><h2 style="font-size:18px">Жаңа тіркелулер</h2>
+      ${users ? `<div class="list">${users}</div>` : '<div class="muted">Растауды күтетін тіркелу жоқ.</div>'}
+      <div class="small muted">Тек өз қызметкерлеріңізді растаңыз. Танымайтын адамды қабылдамаңыз.</div></section>
+    <section class="card"><h2 style="font-size:18px">Келмеу себептері · ${fmtDay(a.day)}</h2>
+      ${abs ? `<div class="list">${abs}</div>` : '<div class="muted">Растауды күтетін себеп жоқ.</div>'}</section>
+  </div>`;
+}
+
+function eventsView(){
+  const a = S.admin;
+  if (!a) return '<div class="loading">Жүктелуде…</div>';
+  const items = a.events.map(e => `<div class="li"><div class="main"><b>${esc(EVENT_TITLES[e.kind] || e.kind)}${e.seen?'':' <span class="badge b-bad">жаңа</span>'}</b>
+    <span class="small muted">${esc(e.details||'')}</span></div><span class="small muted">${esc(e.at)}</span></div>`).join('');
+  return `<div class="stack">
+    <div class="row" style="justify-content:space-between"><h1 class="display" style="font-size:24px">Күдікті әрекеттер</h1>
+      ${a.unseen_events ? `<button class="btn btn-light btn-sm" onclick="A.seen()">Барлығын оқылды деп белгілеу</button>` : ''}</div>
+    <div class="notice n-info small">Мұнда біреу басқаның аккаунтына бөтен телефоннан кіруге, басқаның телефонынан белгіленуге, мектептен тыс жерден немесе жарамсыз QR-кодпен белгіленуге тырысқан жағдайлар көрінеді.</div>
+    <section class="card">${items ? `<div class="list">${items}</div>` : '<div class="muted">Әзірге күдікті әрекет тіркелмеді.</div>'}</section>
+  </div>`;
+}
+
+function staffView(){
+  const a = S.admin;
+  if (!a) return '<div class="loading">Жүктелуде…</div>';
+  const me = S.profile.id;
+  const rows = a.staff.map(s => `<div class="li"><div class="main"><b>${esc(s.full_name)} ${s.role==='admin'?'<span class="badge b-info">әкімші</span>':''}</b>
+    <span class="small muted">${esc(s.position)} · +${esc(s.phone)} · ${s.device_bound?'телефонға байланған':'телефон байланбаған'}</span></div>
+    ${s.id===me ? '<span class="small muted">Сіз</span>' : `<div class="row">
+      <button class="btn btn-light btn-sm" onclick="A.resetDevice('${s.id}')">Телефонды босату</button>
+      <button class="btn btn-light btn-sm" onclick="A.role('${s.id}','${s.role==='admin'?'staff':'admin'}')">${s.role==='admin'?'Әкімшіліктен алу':'Әкімші ету'}</button>
+      <button class="btn btn-bad btn-sm" onclick="A.userStatus('${s.id}','blocked')">Бұғаттау</button></div>`}</div>`).join('');
+  const blocked = a.blocked_users.map(s => `<div class="li"><div class="main"><b>${esc(s.full_name)}</b><span class="small muted">${esc(s.position)} · +${esc(s.phone)}</span></div>
+    <button class="btn btn-light btn-sm" onclick="A.userStatus('${s.id}','active')">Қайта белсендіру</button></div>`).join('');
+  return `<div class="stack">
+    <h1 class="display" style="font-size:24px">Қызметкерлер (${a.staff.length})</h1>
+    <div class="notice n-info small">Қызметкер телефонын ауыстырса, «Телефонды босату» батырмасын басыңыз. Келесі кіргенде аккаунт жаңа телефонға байланады.</div>
+    <section class="card"><div class="list">${rows || '<div class="muted">Қызметкер жоқ.</div>'}</div></section>
+    ${blocked ? `<section class="card"><h2 style="font-size:18px">Бұғатталғандар</h2><div class="list">${blocked}</div></section>` : ''}
+  </div>`;
+}
+
+function tsView(){
+  const ts = S.ts;
+  const monthOpts = KZ_MONTHS.map((m,i) => `<option value="${i+1}" ${S.tsMonth===i+1?'selected':''}>${m}</option>`).join('');
+  let table = '<div class="loading" style="min-height:120px">Жүктелуде…</div>';
+  if (ts) {
+    let head = '<th>Аты-жөні</th>';
+    const we = [];
+    for (let d = 1; d <= ts.days; d++) { const w = new Date(S.tsYear, S.tsMonth-1, d).getDay(); we[d] = (w===0||w===6); head += `<th class="${we[d]?'we':''}">${d}</th>`; }
+    head += '<th>Сағат</th><th>Кешігу</th>';
+    const body = ts.rows.map(r => {
+      const cells = r.cells.map((c, i) => {
+        const cls = c==='А'?'c-A':c==='С'?'c-S':c==='Б'?'c-B':c==='?'?'c-q':'';
+        return `<td class="${cls} ${we[i+1]?'we':''}">${c===null?'':esc(c)}</td>`;
+      }).join('');
+      return `<tr><td><b>${esc(r.full_name)}</b><br><span class="muted">${esc(r.position)}</span></td>${cells}<td><b>${r.total}</b></td><td>${r.late_count}</td></tr>`;
+    }).join('');
+    table = `<div class="tsbox"><table class="ts"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+  return `<div class="stack">
+    <div class="row" style="justify-content:space-between"><h1 class="display" style="font-size:24px">Табель</h1>
+      <div class="row"><select onchange="A.tsMonth(+this.value)" style="width:auto">${monthOpts}</select>
+        <input type="number" value="${S.tsYear}" min="2024" max="2100" onchange="A.tsYear(+this.value)" style="width:100px">
+        <button class="btn btn-dark btn-sm" onclick="A.csv()" ${ts?'':'disabled'}>Excel-ге жүктеу</button></div></div>
+    <div class="row small muted" style="gap:16px"><span>Сан — жұмыс сағаты</span><span><b style="color:var(--bad)">А</b> — ауруы</span><span><b style="color:var(--info)">С</b> — іссапар</span><span><b style="color:var(--late)">Б</b> — басқа себеп</span><span><b style="color:var(--late)">?</b> — «кеттім» белгіленбеген</span></div>
+    ${table}
+  </div>`;
+}
+
+function settingsView(){
+  const a = S.admin;
+  if (!a) return '<div class="loading">Жүктелуде…</div>';
+  const st = a.settings;
+  return `<div class="stack">
+    <h1 class="display" style="font-size:24px">Баптаулар</h1>
+    <section class="card"><h2 style="font-size:18px">Мектептің орны</h2>
+      ${st.lat ? `<div class="notice n-ok small">Белгіленген: ${st.lat.toFixed(6)}, ${st.lng.toFixed(6)} · радиус ${st.radius_m} м · <a href="https://maps.google.com/?q=${st.lat},${st.lng}" target="_blank" rel="noopener">картадан көру</a></div>`
+        : `<div class="notice n-late small">Мектептің орны әлі белгіленбеген. Белгілену жұмыс істеуі үшін осыны жасаңыз.</div>`}
+      <button class="btn btn-main" onclick="A.setHere()">Мен қазір мектептемін — осы жерді белгілеу</button>
+      <div class="small muted">Мектеп ғимаратының ортасында тұрып басыңыз. Немесе координатаны қолмен енгізіңіз (Google Maps-та нүктені ұзақ басып көшіруге болады):</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+        <label>Ендік (lat)<input id="sLat" inputmode="decimal" value="${st.lat??''}"></label>
+        <label>Бойлық (lng)<input id="sLng" inputmode="decimal" value="${st.lng??''}"></label>
+        <label>Радиус, м<input id="sRad" type="number" min="30" max="2000" value="${st.radius_m}"></label>
+        <label>Жұмыс басталуы<input id="sStart" type="time" value="${st.work_start}"></label>
+      </div>
+      <label>Мекенжай<input id="sAddr" value="${esc(st.address||'')}" placeholder="Алматы қ., Радостовца к-сі, 215"></label>
+      <button class="btn btn-dark" onclick="A.saveSettings()">Сақтау</button>
+    </section>
+    <section class="card"><h2 style="font-size:18px">Кіреберіске ілінетін QR-код</h2>
+      <div class="small muted">Басып шығарып, кіреберіске іліңіз. Қызметкерлер оны телефон камерасымен немесе сайттағы батырма арқылы сканерлейді.</div>
+      <div class="qrbox"><div id="qr"></div></div>
+      <div class="row"><button class="btn btn-dark btn-sm" onclick="A.printQr()">Басып шығару</button>
+        <button class="btn btn-bad btn-sm" onclick="A.regen('qr')">Жаңа код жасау</button></div>
+      <div class="small muted">Код суретке түсіріліп таралды деп күдіктенсеңіз, жаңа код жасап, ескісін ауыстырыңыз. Геолокация тексерісі бәрібір жұмыс істейді.</div>
+    </section>
+    <section class="card"><h2 style="font-size:18px">Әкімшілік коды</h2>
+      <div class="row"><span class="display" style="font-size:22px;letter-spacing:2px">${esc(st.admin_code)}</span>
+        <button class="btn btn-light btn-sm" onclick="A.regen('admin_code')">Жаңарту</button></div>
+      <div class="small muted">Осы кодты тіркелгенде енгізген адам бірден әкімші болады. Тек орынбасарларға беріңіз. Әкімшінің кодсыз тағайындалуы: «Қызметкерлер» бөлімі.</div>
+    </section>
+  </div>`;
+}
+
+function qrUrl(){ return location.origin + location.pathname + '?k=' + encodeURIComponent(S.admin.settings.qr_key); }
+function drawQr(){
+  const el = document.getElementById('qr');
+  if (!el || !window.QRCode) return;
+  el.innerHTML = '';
+  new QRCode(el, { text: qrUrl(), width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+}
+
+// ---------- scanner ----------
+let scanner = null;
+function openScanner(onCode){
+  const ov = document.createElement('div');
+  ov.className = 'overlay'; ov.id = 'scanOv';
+  ov.innerHTML = `<div class="sheet"><h2 style="font-size:18px">QR-кодты рамкаға келтіріңіз</h2><div id="reader"></div>
+    <button class="btn btn-light" id="scanCancel">Болдырмау</button></div>`;
+  document.body.appendChild(ov);
+  const close = async () => { try { if (scanner) { await scanner.stop(); scanner.clear(); } } catch(e){} scanner = null; ov.remove(); };
+  document.getElementById('scanCancel').onclick = close;
+  if (!window.Html5Qrcode) { toast('Сканер жүктелмеді. Телефон камерасымен сканерлеңіз.', 'bad'); close(); return; }
+  scanner = new Html5Qrcode('reader');
+  scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 220 }, async (text) => {
+    await close();
+    let k = text;
+    try { k = new URL(text).searchParams.get('k') || text; } catch(e) {}
+    onCode(k);
+  }).catch(() => { toast('Камераға рұқсат берілмеді. Телефонның камерасымен сканерлеп көріңіз.', 'bad'); close(); });
+}
+
+// ---------- actions ----------
+const A = {
+  authTab(t){ S.authTab = t; render(); },
+  async login(f){
+    S.busy = true; render();
+    const r = await rpc('login', { p_phone: f.phone.value, p_password: f.password.value, p_device: deviceId() });
+    S.busy = false;
+    if (!r.ok) { render(); toast(r.msg, 'bad'); return; }
+    await A.afterAuth(r);
+  },
+  async register(f){
+    S.busy = true;
+    const vals = { p_phone: f.phone.value, p_password: f.password.value, p_full_name: f.full_name.value, p_position: f.position.value,
+      p_device: deviceId(), p_admin_code: (f.admin_code && f.admin_code.value.trim()) || null };
+    render();
+    const r = await rpc('register', vals);
+    S.busy = false;
+    if (!r.ok) { render(); toast(r.msg, 'bad'); return; }
+    if (r.pending) { S.authTab = 'login'; render(); toast(r.msg, 'ok'); return; }
+    await A.afterAuth(r);
+  },
+  async afterAuth(r){
+    S.token = r.token; ls('kemel_token', r.token); S.profile = r.profile;
+    S.tab = 'me';
+    await A.loadMe();
+    if (S.profile.role === 'admin') A.loadAdmin();
+  },
+  async loadMe(){
+    const r = await rpc('me', { p_token: S.token, p_device: deviceId() });
+    if (!r.ok) {
+      if (r.logout) { S.token = null; ls('kemel_token', null); S.profile = null; }
+      render(); toast(r.msg, 'bad'); return;
+    }
+    S.profile = r.profile; S.today = r.today; render();
+    // opened by scanning the school QR with the phone camera: check in automatically
+    if (S.pendingQr && !(S.today.attendance && S.today.attendance.check_in)) A.doAction('in', S.pendingQr);
+  },
+  async logout(){
+    if (!confirm('Шығасыз ба? Қайта кіру тек осы телефоннан мүмкін болады.')) return;
+    await rpc('logout', { p_token: S.token });
+    S.token = null; S.profile = null; S.admin = null; ls('kemel_token', null); render();
+  },
+  scan(kind){ openScanner(code => A.doAction(kind, code)); },
+  async doAction(kind, qr){
+    S.busy = true; render();
+    toast('Орналасуыңыз тексерілуде…');
+    const pos = await getPosition();
+    if (pos.err) { S.busy = false; render(); toast(pos.err, 'bad'); return; }
+    const r = await rpc(kind === 'in' ? 'check_in' : 'check_out',
+      { p_token: S.token, p_device: deviceId(), p_qr: qr, p_lat: pos.lat, p_lng: pos.lng });
+    S.busy = false; S.pendingQr = null;
+    if (!r.ok) {
+      if (r.logout) { S.token = null; S.profile = null; ls('kemel_token', null); }
+      render(); toast(r.msg, 'bad'); return;
+    }
+    S.today = r.today; render();
+    if (r.already) toast('Бұл белгі бүгін бұрын қойылған.');
+    else if (kind === 'in') toast(r.needs_reason ? 'Белгіленді. Кешігу себебін көрсетіңіз.' : 'Белгіленді! Жақсы жұмыс күні болсын.', 'ok');
+    else toast('Кеткен уақытыңыз белгіленді.', 'ok');
+    if (S.profile.role === 'admin') A.loadAdmin();
+  },
+  pickLate(r){ S.lateReason = r; render(); },
+  async sendLate(){
+    const note = (document.getElementById('lateNote') || {}).value || '';
+    const text = S.lateReason + (note.trim() ? ': ' + note.trim() : '');
+    const r = await rpc('set_late_reason', { p_token: S.token, p_device: deviceId(), p_reason: text });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    S.today = r.today; S.lateReason = null; render(); toast('Себеп жіберілді.', 'ok');
+  },
+  openAbsence(){
+    const ov = document.createElement('div');
+    ov.className = 'overlay';
+    const draw = () => {
+      ov.innerHTML = `<div class="sheet"><h2 style="font-size:20px">Келмеу себебі</h2>
+        <div class="chips">${ABS_REASONS.map(r => `<button class="chip ${S.absReason===r?'on':''}" data-r="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+        <label>Түсініктеме<textarea id="absNote" rows="3"></textarea></label>
+        <div class="small muted">Анықтама болса, оны оқу ісі орынбасарына жеке тапсырыңыз.</div>
+        <button class="btn btn-dark" id="absSend" ${S.absReason?'':'disabled'}>Әкімшілікке жіберу</button>
+        <button class="btn btn-light" id="absCancel">Болдырмау</button></div>`;
+      ov.querySelectorAll('.chip').forEach(b => b.onclick = () => { const n = (ov.querySelector('#absNote')||{}).value; S.absReason = b.dataset.r; draw(); ov.querySelector('#absNote').value = n || ''; });
+      ov.querySelector('#absCancel').onclick = () => ov.remove();
+      ov.querySelector('#absSend').onclick = async () => {
+        const r = await rpc('report_absence', { p_token: S.token, p_device: deviceId(), p_reason: S.absReason, p_note: ov.querySelector('#absNote').value });
+        if (!r.ok) { toast(r.msg, 'bad'); return; }
+        ov.remove(); S.today = r.today; S.absReason = null; render(); toast('Жіберілді. Әкімшілік растайды.', 'ok');
+      };
+    };
+    draw(); document.body.appendChild(ov);
+  },
+  // admin
+  go(tab){
+    S.tab = tab; render();
+    if (tab === 'ts' && !S.ts) A.loadTs();
+    if (tab !== 'me' && tab !== 'ts') A.loadAdmin();
+  },
+  async loadAdmin(){
+    const r = await rpc('admin_overview', { p_token: S.token, p_device: deviceId(), p_day: S.adminDay });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    S.admin = r; render();
+  },
+  refresh(){ A.loadAdmin(); },
+  setDay(d){ S.adminDay = d || null; A.loadAdmin(); },
+  filter(f){ S.filter = f; render(); },
+  async userStatus(id, status){
+    if (status === 'blocked' && !confirm('Бұл адамды қабылдамау / бұғаттау керек пе?')) return;
+    const r = await rpc('admin_set_user_status', { p_token: S.token, p_device: deviceId(), p_user: id, p_status: status });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast(status === 'active' ? 'Расталды.' : 'Бұғатталды.', 'ok'); A.loadAdmin();
+  },
+  async role(id, role){
+    if (!confirm(role === 'admin' ? 'Бұл қызметкерге әкімшілік құқық беру керек пе?' : 'Әкімшілік құқықты алып тастау керек пе?')) return;
+    const r = await rpc('admin_set_role', { p_token: S.token, p_device: deviceId(), p_user: id, p_role: role });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Сақталды.', 'ok'); A.loadAdmin();
+  },
+  async resetDevice(id){
+    const p = (S.admin.staff.find(s => s.id === id) || {});
+    if (!confirm((p.full_name || 'Қызметкер') + ' аккаунтын телефоннан босату керек пе? Ол келесі кірген телефонға байланады.')) return;
+    const r = await rpc('admin_reset_device', { p_token: S.token, p_device: deviceId(), p_user: id });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Телефон босатылды.', 'ok'); A.loadAdmin();
+  },
+  async absence(id, ok){
+    const r = await rpc('admin_decide_absence', { p_token: S.token, p_device: deviceId(), p_absence: id, p_approve: ok });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast(ok ? 'Расталды.' : 'Қабылданбады.', 'ok'); A.loadAdmin();
+  },
+  async seen(){
+    const r = await rpc('admin_mark_events_seen', { p_token: S.token, p_device: deviceId() });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    A.loadAdmin();
+  },
+  async setHere(){
+    toast('Орналасу анықталуда…');
+    const p = await getPosition();
+    if (p.err) { toast(p.err, 'bad'); return; }
+    if (p.acc > 100 && !confirm('Геолокация дәлдігі төмен (±' + Math.round(p.acc) + ' м). Бәрібір сақтау керек пе? Ашық жерде қайталаған дұрыс.')) return;
+    const r = await rpc('admin_update_settings', { p_token: S.token, p_device: deviceId(), p_lat: p.lat, p_lng: p.lng });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Мектептің орны сақталды (дәлдігі ±' + Math.round(p.acc) + ' м).', 'ok'); A.loadAdmin(); A.loadMe();
+  },
+  async saveSettings(){
+    const num = id => { const v = document.getElementById(id).value.trim().replace(',', '.'); return v === '' ? null : Number(v); };
+    const lat = num('sLat'), lng = num('sLng');
+    if ((lat !== null && (isNaN(lat) || lat < -90 || lat > 90)) || (lng !== null && (isNaN(lng) || lng < -180 || lng > 180))) { toast('Координата дұрыс емес.', 'bad'); return; }
+    const r = await rpc('admin_update_settings', { p_token: S.token, p_device: deviceId(), p_lat: lat, p_lng: lng,
+      p_radius: num('sRad'), p_work_start: document.getElementById('sStart').value, p_address: document.getElementById('sAddr').value });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Сақталды.', 'ok'); A.loadAdmin(); A.loadMe();
+  },
+  async regen(what){
+    const q = what === 'qr' ? 'Жаңа QR-код жасасаңыз, ескі код жұмыс істемей қалады. Жаңасын басып шығарып ілу керек болады. Жалғастырасыз ба?' : 'Әкімшілік кодын жаңарту керек пе?';
+    if (!confirm(q)) return;
+    const r = await rpc('admin_regenerate', { p_token: S.token, p_device: deviceId(), p_what: what });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Жаңартылды.', 'ok'); A.loadAdmin();
+  },
+  printQr(){
+    const pa = document.getElementById('printArea');
+    pa.innerHTML = `<div style="font-family:Unbounded,sans-serif;font-size:36px;font-weight:700">${esc(S.admin.settings.school_name)}</div>
+      <div style="font-size:24px;margin:12px 0 28px">Келдім / Кеттім — QR-кодты сканерлеңіз</div><div id="qrPrint" style="display:inline-block"></div>
+      <div style="font-size:16px;margin-top:24px;color:#555">Тек өз телефоныңыздан белгіленіңіз</div>`;
+    pa.style.display = 'block';
+    new QRCode(document.getElementById('qrPrint'), { text: qrUrl(), width: 420, height: 420, correctLevel: QRCode.CorrectLevel.M });
+    setTimeout(() => { window.print(); pa.style.display = 'none'; }, 300);
+  },
+  async loadTs(){
+    S.ts = null; render();
+    const r = await rpc('admin_timesheet', { p_token: S.token, p_device: deviceId(), p_year: S.tsYear, p_month: S.tsMonth });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    S.ts = r; render();
+  },
+  tsMonth(m){ S.tsMonth = m; A.loadTs(); },
+  tsYear(y){ S.tsYear = y; A.loadTs(); },
+  csv(){
+    const ts = S.ts; if (!ts) return;
+    const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const head = ['Аты-жөні', 'Лауазымы']; for (let d = 1; d <= ts.days; d++) head.push(d); head.push('Барлығы, сағ', 'Кешігу саны');
+    const lines = [head.map(q).join(';')];
+    ts.rows.forEach(r => lines.push([r.full_name, r.position, ...r.cells.map(c => c === null ? '' : String(c).replace('.', ',')), String(r.total).replace('.', ','), r.late_count].map(q).join(';')));
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Табель_' + KZ_MONTHS[S.tsMonth-1] + '_' + S.tsYear + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+};
+
+// ---------- start ----------
+(function init(){
+  const now = new Date(); S.tsYear = now.getFullYear(); S.tsMonth = now.getMonth() + 1;
+  deviceId();
+  if (S.token) { A.loadMe().then(() => { if (S.profile && S.profile.role === 'admin') A.loadAdmin(); }); }
+  else render();
+})();
+</script>
+</body>
+</html>
