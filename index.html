@@ -619,6 +619,7 @@ const A = {
     await A.afterAuth(r);
   },
   async afterAuth(r){
+    touchActivity._t = 0; touchActivity();
     S.token = r.token; ls('kemel_token', r.token); S.profile = r.profile;
     S.tab = 'me';
     await A.loadMe();
@@ -823,9 +824,38 @@ const A = {
 };
 
 // ---------- start ----------
+// ---------- auto sign-out after 5 minutes without activity ----------
+const IDLE_MS = 5 * 60 * 1000;
+function touchActivity(){
+  const now = Date.now();
+  if (!touchActivity._t || now - touchActivity._t > 5000) { touchActivity._t = now; ls('kemel_last', String(now)); }
+}
+function idleTooLong(){
+  const last = Number(ls('kemel_last') || 0);
+  return !!S.token && last > 0 && Date.now() - last > IDLE_MS;
+}
+function lockScreen(showMsg){
+  const t = S.token;
+  if (t) rpc('logout', { p_token: t });
+  S.token = null; S.profile = null; S.admin = null; S.today = null; S.pend = null; S.ts = null;
+  S.authTab = 'login'; S.reg = null;
+  ls('kemel_token', null);
+  document.querySelectorAll('.overlay').forEach(o => o.remove());
+  render();
+  if (faceSupported) freshAuthOptions().then(render);
+  if (showMsg) toast('Қауіпсіздік үшін жүйеден шықтыңыз. Face ID арқылы қайта кіріңіз.');
+}
+function checkIdle(){ if (idleTooLong()) lockScreen(true); }
+['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(ev => window.addEventListener(ev, touchActivity, { passive: true, capture: true }));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkIdle(); });
+window.addEventListener('pageshow', checkIdle);
+setInterval(checkIdle, 15000);
+
 (function init(){
   const now = new Date(); S.tsYear = now.getFullYear(); S.tsMonth = now.getMonth() + 1;
   deviceId();
+  if (S.token && idleTooLong()) { lockScreen(false); touchActivity(); return; }
+  touchActivity();
   if (S.token) { A.loadMe().then(() => { if (S.profile && S.profile.role === 'admin') A.loadAdmin(); }); }
   else { render(); if (faceSupported) freshAuthOptions(); }
 })();
