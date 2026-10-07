@@ -316,6 +316,40 @@ function authView(){
   </div>`;
 }
 
+function distM(lat1, lng1, lat2, lng2){
+  const R = 6371000, r = x => x * Math.PI / 180;
+  const a = Math.sin(r(lat2-lat1)/2)**2 + Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(r(lng2-lng1)/2)**2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(a)));
+}
+// the confirm card: location first, QR only when needed, then Face ID
+function pendView(sch){
+  const p = S.pend;
+  const okS = 'color:var(--ok);font-weight:700', badS = 'color:var(--bad);font-weight:700', warnS = 'color:var(--late);font-weight:700';
+  let locLine = '<span class="muted">тексерілуде…</span>', state = 'wait', d = null;
+  if (p.posErr) { locLine = `<span style="${badS}">✕ анықталмады</span>`; state = 'poserr'; }
+  else if (p.pos) {
+    d = sch.lat != null ? distM(sch.lat, sch.lng, p.pos.lat, p.pos.lng) : null;
+    if (d === null || d <= sch.radius_m) { locLine = `<span style="${okS}">✓ мектеп аумағында</span>`; state = 'ok'; }
+    else if (d <= sch.fallback_radius_m) { locLine = `<span style="${warnS}">≈${d} м, дәл емес</span>`; state = 'near'; }
+    else { locLine = `<span style="${badS}">✕ мектептен ≈${d} м алыс</span>`; state = 'far'; }
+  }
+  const needQr = !p.qr && (p.needQr || ((state === 'ok' || state === 'near') && (sch.qr_required || state === 'near')));
+  const qrLine = p.qr ? `<span style="${okS}">✓ оқылды</span>` : needQr ? `<span style="${warnS}">сканерлеу керек</span>` : '<span class="muted">керек емес</span>';
+  const ready = (state === 'ok' || state === 'near') && !needQr && S.authOpts && !S.busy;
+  let action = '';
+  if (state === 'poserr') action = `<div class="notice n-bad small">${esc(p.posErr)}</div><button class="btn btn-light" onclick="A.prepare('${p.kind}', S.pend.qr)">Қайта тексеру</button>`;
+  else if (state === 'far') action = `<div class="notice n-bad small">Сіз мектеп аумағынан тыс жердесіз. Мектепке келгенде қайталаңыз.</div><button class="btn btn-light" onclick="A.prepare('${p.kind}', S.pend.qr)">Қайта тексеру</button>`;
+  else if (needQr) action = `<div class="notice n-late small">${sch.qr_required ? 'Мектепте QR-код міндетті.' : 'Ғимарат ішінде GPS дәл анықтамады.'} Кіреберістегі QR-кодты сканерлеңіз.</div>
+      <button class="btn btn-dark big" onclick="A.scanForPend()">QR-кодты сканерлеу</button>`;
+  else action = `<button class="btn btn-main big" onclick="A.confirm()" style="display:flex;align-items:center;justify-content:center;gap:10px" ${ready?'':'disabled'}>${FACE_ICON} Face ID-мен растау</button>`;
+  return `<section class="card" style="border:2px solid var(--accent)">
+      <h2 style="font-size:20px">${p.kind==='in'?'Келгеніңізді растаңыз':'Кеткеніңізді растаңыз'}</h2>
+      <div class="row" style="justify-content:space-between"><span>Орналасу</span>${locLine}</div>
+      <div class="row" style="justify-content:space-between"><span>QR-код</span>${qrLine}</div>
+      ${action}
+      <button class="btn btn-light" onclick="S.pend=null;render()">Болдырмау</button></section>`;
+}
+
 function meView(){
   const t = S.today || {};
   const at = t.attendance, ab = t.absence;
@@ -328,13 +362,13 @@ function meView(){
     main += `<section class="card"><div class="row" style="justify-content:space-between"><span class="muted small">Бүгінгі мәртебе</span><span class="badge ${st[1]}">${st[0]}</span></div>
       <h2 style="font-size:20px">Келмеу себебі: ${esc(ab.reason)}</h2>${ab.note?`<div class="muted">${esc(ab.note)}</div>`:''}</section>
       <button class="btn btn-light" onclick="A.openAbsence()">Себепті өзгерту</button>
-      <button class="btn btn-main big" onclick="A.scan('in')">Келдім · QR сканерлеу</button>`;
+      <button class="btn btn-main big" onclick="A.prepare('in', null)">Келдім</button>`;
   } else if (!at || !at.check_in) {
     main += `<section class="card"><span class="muted small">Бүгінгі мәртебе</span><h2 style="font-size:20px">Әлі белгіленбедіңіз</h2>
       <div class="muted">Жұмыс басталуы: ${esc(t.work_start || '08:00')}</div></section>
-      <button class="btn btn-main big" onclick="A.scan('in')" ${S.busy?'disabled':''}>Келдім · QR сканерлеу</button>
+      <button class="btn btn-main big" onclick="A.prepare('in', null)" ${S.busy||S.pend?'disabled':''}>Келдім</button>
       <button class="btn btn-light" onclick="A.openAbsence()">Бүгін келе алмаймын</button>
-      <div class="muted small">Кіреберістегі QR-кодты осы батырма арқылы немесе телефонның камерасымен сканерлеңіз. Сол сәтте телефоныңыздың мектеп аумағында екені тексеріледі.</div>`;
+      <div class="muted small">Мектепке келгенде «Келдім» батырмасын басыңыз: орналасуыңыз тексеріледі, содан кейін Face ID сұралады. GPS дәл анықтамаса, жүйе кіреберістегі QR-кодты сканерлеуді сұрайды.</div>`;
   } else {
     const late = at.late_min > 0;
     const badge = late ? `<span class="badge b-late">Кешікті · ${at.late_min} мин</span>` : `<span class="badge b-ok">Уақытында</span>`;
@@ -350,24 +384,12 @@ function meView(){
         <button class="btn btn-dark" onclick="A.sendLate()" ${S.lateReason?'':'disabled'}>Жіберу</button></section>`;
     }
     if (!at.check_out) {
-      main += `<button class="btn btn-dark big" onclick="A.scan('out')" ${S.busy?'disabled':''}>Кеттім · QR сканерлеу</button>`;
+      main += `<button class="btn btn-dark big" onclick="A.prepare('out', null)" ${S.busy||S.pend?'disabled':''}>Кеттім</button>`;
     } else {
       main += `<div class="notice n-ok">Жұмыс күні аяқталды. Сау болыңыз!</div>`;
     }
   }
-  if (S.pend) {
-    const p = S.pend;
-    const loc = p.posErr ? `<span style="color:var(--bad);font-weight:700">✕ ${esc(p.posErr)}</span>`
-      : p.pos ? `<span style="color:var(--ok);font-weight:700">✓ анықталды (±${Math.round(p.pos.acc)} м)</span>` : '<span class="muted">тексерілуде…</span>';
-    const ready = p.pos && S.authOpts && !S.busy;
-    main = `<section class="card" style="border:2px solid var(--accent)">
-      <h2 style="font-size:20px">${p.kind==='in'?'Келгеніңізді растаңыз':'Кеткеніңізді растаңыз'}</h2>
-      <div class="row" style="justify-content:space-between"><span>QR-код</span><span style="color:var(--ok);font-weight:700">✓ оқылды</span></div>
-      <div class="row" style="justify-content:space-between"><span>Орналасу</span>${loc}</div>
-      ${p.posErr ? `<button class="btn btn-light btn-sm" onclick="A.prepare('${p.kind}', S.pend.qr)">Қайта тексеру</button>` : ''}
-      <button class="btn btn-main big" onclick="A.confirm()" style="display:flex;align-items:center;justify-content:center;gap:10px" ${ready?'':'disabled'}>${FACE_ICON} Face ID-мен растау</button>
-      <button class="btn btn-light" onclick="S.pend=null;render()">Болдырмау</button></section>` + main;
-  }
+  if (S.pend) main = pendView(t.school || {}) + main;
   return `<div class="stack" style="max-width:520px;margin:0 auto">
     <div class="muted">${t.day ? fmtDay(t.day) : ''}</div>${main}</div>`;
 }
@@ -391,7 +413,7 @@ function todayView(){
       : st==='away' ? `<span class="badge b-info">${esc(s.absence.reason)}${s.absence.status==='pending'?' · растау күтуде':s.absence.status==='rejected'?' · қабылданбады':''}</span>` : '<span class="badge b-none">Белгіленбеген</span>';
     const note = s.late_reason ? 'Себебі: ' + esc(s.late_reason) : (s.absence && s.absence.note ? esc(s.absence.note) : '');
     return `<div class="li"><div class="main"><b>${esc(s.full_name)}</b><span class="small muted">${esc(s.position)}${note?' · '+note:''}</span></div>
-      <div class="times"><span>Келді: <b>${esc(s.check_in||'—')}</b></span><span>Кетті: <b>${esc(s.check_out||'—')}</b></span></div>${badge}</div>`;
+      <div class="times"><span>Келді: <b>${esc(s.check_in||'—')}</b>${s.in_method==='qr'?` <span class="badge b-info" title="GPS дәл болмады, QR арқылы">QR · ${s.in_dist} м</span>`:''}</span><span>Кетті: <b>${esc(s.check_out||'—')}</b></span></div>${badge}</div>`;
   }).join('') || '<div class="muted" style="padding:12px 0">Бұл сүзгі бойынша ешкім жоқ.</div>';
   return `<div class="stack">
     <div class="row" style="justify-content:space-between">
@@ -508,6 +530,13 @@ function settingsView(){
       <div class="row"><button class="btn btn-dark btn-sm" onclick="A.printQr()">Басып шығару</button>
         <button class="btn btn-bad btn-sm" onclick="A.regen('qr')">Жаңа код жасау</button></div>
       <div class="small muted">Код суретке түсіріліп таралды деп күдіктенсеңіз, жаңа код жасап, ескісін ауыстырыңыз. Геолокация тексерісі бәрібір жұмыс істейді.</div>
+    </section>
+    <section class="card"><h2 style="font-size:18px">Белгілену ережесі</h2>
+      <div class="small muted">Әдетте қызметкер мектеп аумағында тұрса, «Келдім» батырмасы мен Face ID жеткілікті. GPS оны аумақтан сәл тыс көрсетсе, жүйе QR-код сұрайды. Тым алыс болса, белгілеуге болмайды.</div>
+      <label>QR арқылы рұқсат етілетін ең үлкен қашықтық, м<input id="sFallback" type="number" min="100" max="5000" value="${st.fallback_radius_m}"></label>
+      <label style="flex-direction:row;align-items:center;gap:12px;color:var(--ink)"><input id="sQrReq" type="checkbox" ${st.qr_required?'checked':''} style="width:24px;height:24px;min-height:0"> QR-код әрқашан міндетті болсын</label>
+      <div class="small muted">Жалған локация қолданылады деп күдіктенсеңіз, осы қосқышты қосыңыз. Сонда барлығы күнде QR-кодты сканерлейді.</div>
+      <button class="btn btn-dark" onclick="A.saveRules()">Сақтау</button>
     </section>
     <section class="card"><h2 style="font-size:18px">Әкімшілік коды</h2>
       <div class="row"><span class="display" style="font-size:22px;letter-spacing:2px">${esc(st.admin_code)}</span>
@@ -627,6 +656,9 @@ const A = {
     render();
   },
   // step 2: Face ID straight from the button press, then send everything
+  scanForPend(){
+    openScanner(code => { if (!S.pend) return; S.pend.qr = code; S.pend.needQr = false; render(); freshAuthOptions().then(render); });
+  },
   async confirm(){
     const p = S.pend; if (!p || !p.pos) return;
     const o = takeAuthOptions();
@@ -637,7 +669,10 @@ const A = {
     const r = await fn({ action:'auth_verify', purpose: p.kind, response: resp, token: S.token, device: deviceId(),
       qr: p.qr, lat: p.pos.lat, lng: p.pos.lng });
     S.busy = false;
-    if (!r.ok) { freshAuthOptions().then(render); render(); toast(r.msg, 'bad'); return; }
+    if (!r.ok) {
+      if (r.need_qr && S.pend) S.pend.needQr = true;
+      freshAuthOptions().then(render); render(); toast(r.msg, 'bad'); return;
+    }
     const kind = p.kind;
     S.pend = null; S.today = r.today; render();
     if (r.already) toast('Бұл белгі бүгін бұрын қойылған.');
@@ -739,6 +774,13 @@ const A = {
     if ((lat !== null && (isNaN(lat) || lat < -90 || lat > 90)) || (lng !== null && (isNaN(lng) || lng < -180 || lng > 180))) { toast('Координата дұрыс емес.', 'bad'); return; }
     const r = await rpc('admin_update_settings', { p_token: S.token, p_device: deviceId(), p_lat: lat, p_lng: lng,
       p_radius: num('sRad'), p_work_start: document.getElementById('sStart').value, p_address: document.getElementById('sAddr').value });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Сақталды.', 'ok'); A.loadAdmin(); A.loadMe();
+  },
+  async saveRules(){
+    const fb = Number(document.getElementById('sFallback').value);
+    const r = await rpc('admin_update_checkin_rules', { p_token: S.token, p_device: deviceId(),
+      p_qr_required: document.getElementById('sQrReq').checked, p_fallback: isNaN(fb) ? null : fb });
     if (!r.ok) { toast(r.msg, 'bad'); return; }
     toast('Сақталды.', 'ok'); A.loadAdmin(); A.loadMe();
   },
