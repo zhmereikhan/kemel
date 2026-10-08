@@ -89,6 +89,37 @@ table.ts td.we{background:#F1F3F7}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:92vw;padding:14px 18px;border-radius:14px;color:#fff;font-weight:700;z-index:60;display:none;box-shadow:0 6px 24px rgba(0,0,0,.2)}
 .qrbox{background:#fff;padding:16px;border-radius:12px;display:inline-block;align-self:flex-start}
 .loading{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--muted)}
+/* finance requests: receipt look */
+.rc{background:#fff;border-radius:16px;padding:22px 20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 1px 0 var(--line)}
+.rc-to{align-self:flex-end;text-align:right;font-size:14px;color:var(--muted);line-height:1.45}
+.rc-title{text-align:center;font-family:'Unbounded',sans-serif;font-weight:700;font-size:18px;letter-spacing:.5px}
+.rc-sub{text-align:center;color:var(--muted);font-size:15px}
+.rc-items{display:flex;flex-direction:column;gap:10px;border-top:2px dashed var(--line2);border-bottom:2px dashed var(--line2);padding:14px 0}
+.rc-line{display:flex;align-items:baseline;gap:8px;font-size:16px}
+.rc-line .nm{min-width:0;overflow-wrap:anywhere}
+.rc-line .dots{flex:1 1 24px;border-bottom:2px dotted var(--line2);transform:translateY(-4px);min-width:16px}
+.rc-line .sum{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rc-total{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.rc-total .v{font-family:'Unbounded',sans-serif;font-weight:700;font-size:26px;white-space:nowrap}
+.rc-words{font-size:14px;color:var(--muted);font-style:italic}
+.steps{display:flex;flex-direction:column;gap:0}
+.stp{display:flex;gap:12px;align-items:flex-start;padding:8px 0}
+.stp .dot{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;border:2px solid var(--line2);color:var(--muted);background:#fff}
+.stp.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.stp.now .dot{border-color:var(--accent);color:var(--late);background:var(--late-bg)}
+.stp.bad .dot{background:var(--bad);border-color:var(--bad);color:#fff}
+.stp .tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mini-steps{display:flex;gap:4px}
+.mini-steps span{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.mini-steps span.done{background:var(--ok)}
+.mini-steps span.now{background:var(--accent)}
+.mini-steps span.bad{background:var(--bad)}
+.fin-card{background:#fff;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;border:2px solid transparent;text-align:left;width:100%;font:inherit;color:inherit}
+.fin-card.turn{border-color:var(--accent)}
+.item-row{display:grid;grid-template-columns:minmax(0,1fr) 104px 40px;gap:6px;align-items:center}
+.item-row input{padding:10px 12px}
+.item-row input{min-height:46px}
+.icon-btn{border:none;background:var(--ground);border-radius:10px;height:44px;width:44px;cursor:pointer;font-size:20px;color:var(--muted)}
 @media print{
   body *{visibility:hidden}
   #printArea,#printArea *{visibility:visible}
@@ -242,14 +273,15 @@ function render(){
   if (!S.token || !S.profile) { app.innerHTML = authView(); return; }
   const isAdmin = S.profile.role === 'admin';
   let body = '';
-  if (S.tab === 'me' || !isAdmin) body = meView();
+  if (S.tab === 'fin') body = finView();
+  else if (S.tab === 'me' || !isAdmin) body = meView();
   else if (S.tab === 'today') body = todayView();
   else if (S.tab === 'approve') body = approveView();
   else if (S.tab === 'events') body = eventsView();
   else if (S.tab === 'staff') body = staffView();
   else if (S.tab === 'ts') body = tsView();
   else if (S.tab === 'settings') body = settingsView();
-  app.innerHTML = topbar() + (isAdmin ? tabsView() : '') + '<div class="wrap">' + body + '</div>';
+  app.innerHTML = topbar() + tabsView() + '<div class="wrap">' + body + '</div>';
   if (S.tab === 'settings' && isAdmin) drawQr();
 }
 
@@ -265,7 +297,8 @@ function tabsView(){
   const pend = a ? a.pending_users.length + a.staff.filter(s => s.absence && s.absence.status === 'pending').length : 0;
   const ev = a ? a.unseen_events : 0;
   const t = (id, label, n) => `<button class="tab ${S.tab===id?'on':''}" onclick="A.go('${id}')">${label}${n?`<span class="n">${n}</span>`:''}</button>`;
-  return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Менің белгілеуім')}${t('today','Бүгін')}${t('approve','Растау',pend)}${t('events','Күдікті әрекеттер',ev)}${t('staff','Қызметкерлер')}${t('ts','Табель')}${t('settings','Баптаулар')}</nav>`;
+  if (S.profile.role !== 'admin') return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Белгілену')}${t('fin','Қаржы өтінімдері',S.finTodo)}</nav>`;
+  return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Менің белгілеуім')}${t('today','Бүгін')}${t('fin','Қаржы өтінімдері',S.finTodo)}${t('approve','Растау',pend)}${t('events','Күдікті әрекеттер',ev)}${t('staff','Қызметкерлер')}${t('ts','Табель')}${t('settings','Баптаулар')}</nav>`;
 }
 
 const FACE_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3H5a2 2 0 0 0-2 2v2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M3 17v2a2 2 0 0 0 2 2h2"/><path d="M9 9v1"/><path d="M15 9v1"/><path d="M12 9v4h-1"/><path d="M9 16c1.7 1.3 4.3 1.3 6 0"/></svg>`;
@@ -398,6 +431,150 @@ function meView(){
   if (S.pend) main = pendView(t.school || {}) + main;
   return `<div class="stack" style="max-width:520px;margin:0 auto">
     <div class="muted">${t.day ? fmtDay(t.day) : ''}</div>${main}</div>`;
+}
+
+// ---------- finance requests ----------
+function fmtMoney(n){
+  const v = Number(n) || 0;
+  return v.toLocaleString('ru-RU', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }) + ' ₸';
+}
+// amount in Kazakh words, e.g. 108958 -> "жүз сегіз мың тоғыз жүз елу сегіз"
+function kzWords(n){
+  n = Math.floor(Number(n) || 0);
+  if (n === 0) return 'нөл';
+  const ones = ['', 'бір', 'екі', 'үш', 'төрт', 'бес', 'алты', 'жеті', 'сегіз', 'тоғыз'];
+  const tens = ['', 'он', 'жиырма', 'отыз', 'қырық', 'елу', 'алпыс', 'жетпіс', 'сексен', 'тоқсан'];
+  const tri = (x) => {
+    const h = Math.floor(x / 100), t = Math.floor(x % 100 / 10), o = x % 10, w = [];
+    if (h) w.push(h === 1 ? 'жүз' : ones[h] + ' жүз');
+    if (t) w.push(tens[t]);
+    if (o) w.push(ones[o]);
+    return w.join(' ');
+  };
+  const parts = [], bil = Math.floor(n / 1e9), mil = Math.floor(n % 1e9 / 1e6), th = Math.floor(n % 1e6 / 1000), rest = n % 1000;
+  if (bil) parts.push(tri(bil) + ' миллиард');
+  if (mil) parts.push(tri(mil) + ' миллион');
+  if (th) parts.push(tri(th) + ' мың');
+  if (rest) parts.push(tri(rest));
+  return parts.join(' ');
+}
+function finStatus(r){
+  if (r.status === 'paid') return ['Төленді', 'b-ok'];
+  if (r.status === 'rejected') return ['Қабылданбады', 'b-bad'];
+  if (r.status === 'approved') return ['Бухгалтерде', 'b-info'];
+  const c = r.chain[r.step] || {};
+  return ['Растауда: ' + (c.label || ''), 'b-late'];
+}
+function stepState(r, i){
+  const rejectedAt = r.status === 'rejected' ? (r.history.filter(h => h.action === 'reject').slice(-1)[0] || {}).step : null;
+  if (r.status === 'rejected' && i === rejectedAt) return 'bad';
+  if (r.status === 'paid' || i < r.step) return 'done';
+  if (i === r.step && r.status !== 'rejected') return 'now';
+  return '';
+}
+function receiptHTML(r, forPrint){
+  const dir = r.chain[0] || {};
+  const lines = r.items.map(it => `<div class="rc-line"><span class="nm">${esc(it.name)}</span><span class="dots"></span><span class="sum">${fmtMoney(it.amount)}</span></div>`).join('');
+  const sch = '«KEMEL» қалалық физика-математика мектебі';
+  return `<div class="rc" ${forPrint ? 'style="box-shadow:none;max-width:640px;margin:0 auto;text-align:left;font-family:\'PT Sans\',sans-serif"' : ''}>
+    <div class="rc-to">${esc(sch)}<br>${esc(dir.label || 'Директор')}: <b>${esc(dir.name || '')}</b></div>
+    <div><div class="rc-title">ӨТІНІШ №${r.id}</div><div class="rc-sub">${esc(r.title)}${r.event_date ? ' · ' + esc(fmtDateDot(r.event_date)) : ''}</div></div>
+    <div class="rc-items">${lines}</div>
+    <div class="rc-total"><span style="font-weight:700">Жалпы сома</span><span class="v">${fmtMoney(r.total)}</span></div>
+    <div class="rc-words">(${esc(kzWords(r.total))} теңге) бөлуіңізді сұраймын.</div>
+    ${r.note ? `<div class="small" style="white-space:pre-line">${esc(r.note)}</div>` : ''}
+    <div class="small" style="border-top:1px solid var(--line);padding-top:10px">${esc(r.author.position)}: <b>${esc(r.author.full_name)}</b> · ${esc(r.created)}</div>
+  </div>`;
+}
+function fmtDateDot(iso){ const [y, m, d] = String(iso).split('-'); return d + '.' + m + '.' + y; }
+function stepsHTML(r){
+  return `<div class="steps">${r.chain.map((c, i) => {
+    const s = stepState(r, i);
+    const h = r.history.filter(x => x.step === i && x.action !== 'submit' && x.action !== 'resubmit').slice(-1)[0];
+    const what = s === 'done' ? (h && h.action === 'pay' ? 'Төледі' : 'Растады') : s === 'bad' ? 'Қабылдамады' : s === 'now' ? 'Кезегі келді' : 'Күтуде';
+    return `<div class="stp ${s}"><span class="dot">${s === 'done' ? '✓' : s === 'bad' ? '✕' : i + 1}</span>
+      <div class="tx"><b>${esc(c.label)}: ${esc(c.name || '—')}</b>
+      <span class="small muted">${what}${h ? ' · ' + esc(h.at) : ''}</span>
+      ${h && h.comment ? `<span class="small">«${esc(h.comment)}»</span>` : ''}</div></div>`;
+  }).join('')}</div>`;
+}
+function finView(){
+  if (S.finMode === 'new') return finFormView();
+  const list = S.finList;
+  if (!list) return '<div class="loading">Жүктелуде…</div>';
+  if (S.finMode === 'view') {
+    const r = list.find(x => x.id === S.finOpen);
+    if (!r) { S.finMode = 'list'; return finView(); }
+    const st = finStatus(r);
+    const last = r.step >= r.chain.length - 1;
+    let act = '';
+    if (r.my_turn) act = `<section class="card" style="border:2px solid var(--accent)">
+        <h2 style="font-size:18px">Сіздің шешіміңіз</h2>
+        <label>Түсініктеме ${last ? '(міндетті емес)' : '(қабылдамаса, міндетті)'}<textarea id="finComment" rows="2"></textarea></label>
+        <button class="btn btn-ok big" onclick="A.finDecide('approve')" ${S.busy?'disabled':''}>${last ? 'Төленді деп белгілеу' : 'Растау'}</button>
+        <button class="btn btn-bad" onclick="A.finDecide('reject')" ${S.busy?'disabled':''}>Қабылдамау</button></section>`;
+    else if (r.is_author && r.status === 'rejected') act = `<button class="btn btn-dark" onclick="A.finEdit(${r.id})">Түзетіп қайта жіберу</button>`;
+    return `<div class="stack" style="max-width:640px;margin:0 auto">
+      <div class="row" style="justify-content:space-between"><button class="btn btn-light btn-sm" onclick="A.finBack()">← Тізімге</button>
+        <span class="badge ${st[1]}">${esc(st[0])}</span></div>
+      ${receiptHTML(r, false)}
+      ${act}
+      <section class="card"><h2 style="font-size:18px">Растау жолы</h2>${stepsHTML(r)}</section>
+      <button class="btn btn-light btn-sm" style="align-self:flex-start" onclick="A.finPrint(${r.id})">Басып шығару</button>
+    </div>`;
+  }
+  const f = S.finFilter || 'all';
+  const todo = list.filter(r => r.my_turn), mine = list.filter(r => r.is_author);
+  const shown = f === 'todo' ? todo : f === 'mine' ? mine : list;
+  const chip = (id, label, n) => `<button class="chip ${f===id?'on':''}" onclick="S.finFilter='${id}';render()">${label}${n !== undefined ? ' (' + n + ')' : ''}</button>`;
+  const cards = shown.map(r => {
+    const st = finStatus(r);
+    const bars = r.chain.map((c, i) => `<span class="${stepState(r, i)}"></span>`).join('');
+    return `<button class="fin-card ${r.my_turn?'turn':''}" onclick="A.finOpen(${r.id})">
+      <div class="row" style="justify-content:space-between;gap:8px"><b style="font-size:16px">№${r.id} · ${esc(r.title)}</b><span class="badge ${st[1]}">${esc(st[0])}</span></div>
+      <div class="row" style="justify-content:space-between;align-items:baseline"><span class="small muted">${esc(r.author.full_name)} · ${esc(r.created)}</span>
+        <span class="display" style="font-size:20px">${fmtMoney(r.total)}</span></div>
+      <div class="mini-steps">${bars}</div>
+      ${r.my_turn ? '<span class="small" style="color:var(--late);font-weight:700">Сіздің шешіміңізді күтуде</span>' : ''}
+    </button>`;
+  }).join('') || `<div class="card muted">${f === 'todo' ? 'Сіздің шешіміңізді күтетін өтінім жоқ.' : 'Әзірге өтінім жоқ.'}</div>`;
+  return `<div class="stack" style="max-width:640px;margin:0 auto">
+    <div class="row" style="justify-content:space-between"><h1 class="display" style="font-size:24px">Қаржы өтінімдері</h1>
+      <button class="btn btn-main btn-sm" onclick="A.finNew()">+ Жаңа өтінім</button></div>
+    ${S.finChainReady === false ? `<div class="notice n-late small">Растау тізбегі әлі бапталмаған. ${S.profile.role==='admin' ? '«Баптаулар» бөлімінде кім растайтынын белгілеңіз.' : 'Әкімшілік баптағаннан кейін өтінім жібере аласыз.'}</div>` : ''}
+    <div class="chips">${chip('todo','Менің кезегім',todo.length)}${chip('mine','Менің өтінімдерім',mine.length)}${chip('all','Барлығы')}</div>
+    <div class="stack" style="gap:10px">${cards}</div>
+  </div>`;
+}
+function finFormView(){
+  const fm = S.finForm;
+  const rows = fm.items.map((it, i) => `<div class="item-row">
+      <input aria-label="Не үшін" placeholder="Не үшін (мысалы: Баннер)" value="${esc(it.name)}" oninput="S.finForm.items[${i}].name=this.value">
+      <input aria-label="Сома" inputmode="decimal" placeholder="Сома, ₸" value="${esc(it.amount)}" oninput="S.finForm.items[${i}].amount=this.value.replace(/[^0-9.,]/g,'');finTotal()">
+      <button class="icon-btn" aria-label="Жолды өшіру" onclick="A.finRemoveRow(${i})">×</button></div>`).join('');
+  return `<div class="stack" style="max-width:640px;margin:0 auto">
+    <div class="row" style="justify-content:space-between"><button class="btn btn-light btn-sm" onclick="A.finBack()">← Тізімге</button>
+      <h1 class="display" style="font-size:20px">${fm.id ? 'Өтінімді түзету' : 'Жаңа өтінім'}</h1></div>
+    <section class="card">
+      <label>Не үшін (іс-шара атауы)<input id="fTitle" value="${esc(fm.title)}" oninput="S.finForm.title=this.value" placeholder="Мысалы: Ұстаздар күні"></label>
+      <label>Іс-шара күні (міндетті емес)<input id="fDate" type="date" value="${esc(fm.date)}" oninput="S.finForm.date=this.value"></label>
+    </section>
+    <section class="card">
+      <h2 style="font-size:18px">Шығындар</h2>
+      <div class="stack" style="gap:8px">${rows}</div>
+      <button class="btn btn-light btn-sm" style="align-self:flex-start" onclick="A.finAddRow()">+ Жол қосу</button>
+      <div class="rc-total" style="border-top:2px dashed var(--line2);padding-top:12px"><span style="font-weight:700">Жалпы сома</span><span class="v" id="fTotal">${fmtMoney(finSum())}</span></div>
+      <div class="rc-words" id="fWords">${esc(kzWords(finSum()))} теңге</div>
+    </section>
+    <section class="card"><label>Қосымша түсініктеме (міндетті емес)<textarea rows="2" oninput="S.finForm.note=this.value">${esc(fm.note)}</textarea></label></section>
+    <button class="btn btn-main big" onclick="A.finSubmit()" ${S.busy?'disabled':''}>Растауға жіберу</button>
+  </div>`;
+}
+function finSum(){ return S.finForm.items.reduce((s, it) => s + (parseFloat(String(it.amount).replace(',', '.')) || 0), 0); }
+function finTotal(){
+  const t = document.getElementById('fTotal'), w = document.getElementById('fWords');
+  if (t) t.textContent = fmtMoney(finSum());
+  if (w) w.textContent = kzWords(finSum()) + ' теңге';
 }
 
 // ---------- admin views ----------
@@ -538,6 +715,14 @@ function settingsView(){
         <button class="btn btn-bad btn-sm" onclick="A.regen('qr')">Жаңа код жасау</button></div>
       <div class="small muted">Код суретке түсіріліп таралды деп күдіктенсеңіз, жаңа код жасап, ескісін ауыстырыңыз. Геолокация тексерісі бәрібір жұмыс істейді.</div>
     </section>
+    <section class="card"><h2 style="font-size:18px">Қаржы өтінімдерін растау тізбегі</h2>
+      <div class="small muted">Өтінім осы ретпен кезекпен барады. Соңғы қадамдағы адам (бухгалтер) «Төленді» деп белгілейді. Адам тізімде болуы үшін алдымен сайтта тіркелуі керек.</div>
+      ${S.finChain ? S.finChain.map((c, i) => `<label>${i + 1}. ${esc(c.label)}<select id="chain${i}">
+          <option value="">— таңдаңыз —</option>
+          ${a.staff.map(s => `<option value="${s.id}" ${s.id === c.staff_id ? 'selected' : ''}>${esc(s.full_name)} · ${esc(s.position)}</option>`).join('')}
+        </select></label>`).join('') : '<div class="muted">Жүктелуде…</div>'}
+      <button class="btn btn-dark" onclick="A.saveChain()" ${S.finChain?'':'disabled'}>Сақтау</button>
+    </section>
     <section class="card"><h2 style="font-size:18px">Белгілену ережесі</h2>
       <div class="small muted">Әдетте қызметкер мектеп аумағында тұрса, «Келдім» батырмасы мен Face ID жеткілікті. GPS оны аумақтан сәл тыс көрсетсе, жүйе QR-код сұрайды. Тым алыс болса, белгілеуге болмайды.</div>
       <label>QR арқылы рұқсат етілетін ең үлкен қашықтық, м<input id="sFallback" type="number" min="100" max="5000" value="${st.fallback_radius_m}"></label>
@@ -639,7 +824,7 @@ const A = {
       if (r.logout) { S.token = null; ls('kemel_token', null); S.profile = null; }
       render(); toast(r.msg, 'bad'); return;
     }
-    S.profile = r.profile; S.today = r.today; render();
+    S.profile = r.profile; S.today = r.today; S.finTodo = r.fin_todo || 0; render();
     // opened by scanning the school QR with the phone camera
     if (S.pendingQr) {
       const at = S.today.attendance;
@@ -730,9 +915,79 @@ const A = {
   },
   // admin
   go(tab){
-    S.tab = tab; render();
+    S.tab = tab;
+    if (tab === 'fin') { S.finMode = 'list'; if (!S.finFilter) S.finFilter = S.finTodo ? 'todo' : 'all'; }
+    render();
+    if (tab === 'fin') { A.loadFin(); return; }
+    if (S.profile.role !== 'admin') return;
     if (tab === 'ts') A.loadTs();
+    if (tab === 'settings') A.loadChain();
     if (tab !== 'me' && tab !== 'ts') A.loadAdmin();
+  },
+  // ----- finance requests -----
+  async loadFin(){
+    const r = await rpc('fin_list', { p_token: S.token, p_device: deviceId() });
+    if (!r.ok) { if (r.logout) { lockScreen(false); } toast(r.msg, 'bad'); return; }
+    S.finList = r.requests; S.finChainReady = r.chain_ready;
+    S.finTodo = r.requests.filter(x => x.my_turn).length;
+    render();
+  },
+  finOpen(id){ S.finOpen = id; S.finMode = 'view'; render(); window.scrollTo(0, 0); },
+  finBack(){ S.finMode = 'list'; render(); A.loadFin(); },
+  finNew(){
+    S.finForm = { id: null, title: '', date: '', note: '', items: [{ name:'', amount:'' }, { name:'', amount:'' }, { name:'', amount:'' }] };
+    S.finMode = 'new'; render(); window.scrollTo(0, 0);
+  },
+  finEdit(id){
+    const r = S.finList.find(x => x.id === id); if (!r) return;
+    S.finForm = { id: r.id, title: r.title, date: r.event_date || '', note: r.note || '',
+      items: r.items.map(it => ({ name: it.name, amount: String(it.amount) })) };
+    S.finMode = 'new'; render(); window.scrollTo(0, 0);
+  },
+  finAddRow(){ S.finForm.items.push({ name:'', amount:'' }); render(); const ins = document.querySelectorAll('.item-row input'); if (ins.length) ins[ins.length - 2].focus(); },
+  finRemoveRow(i){ S.finForm.items.splice(i, 1); if (!S.finForm.items.length) S.finForm.items.push({ name:'', amount:'' }); render(); },
+  async finSubmit(){
+    const fm = S.finForm;
+    const items = fm.items.map(it => ({ name: it.name.trim(), amount: String(it.amount).replace(',', '.').trim() }))
+      .filter(it => it.name || it.amount);
+    S.busy = true; render();
+    const r = await rpc('fin_save', { p_token: S.token, p_device: deviceId(), p_title: fm.title, p_event_date: fm.date || null,
+      p_items: items, p_note: fm.note, p_id: fm.id });
+    S.busy = false;
+    if (!r.ok) { render(); toast(r.msg, 'bad'); return; }
+    toast('Өтінім растауға жіберілді.', 'ok');
+    await A.loadFin(); A.finOpen(r.request.id);
+  },
+  async finDecide(decision){
+    const c = (document.getElementById('finComment') || {}).value || '';
+    if (decision === 'reject' && !c.trim()) { toast('Қабылдамау себебін түсініктемеге жазыңыз.', 'bad'); return; }
+    const r0 = S.finList.find(x => x.id === S.finOpen);
+    const last = r0 && r0.step >= r0.chain.length - 1;
+    if (decision === 'approve' && !confirm(last ? 'Төленді деп белгілейсіз бе?' : fmtMoney(r0.total) + ' сомасын растайсыз ба?')) return;
+    S.busy = true; render();
+    const r = await rpc('fin_decide', { p_token: S.token, p_device: deviceId(), p_id: S.finOpen, p_decision: decision, p_comment: c });
+    S.busy = false;
+    if (!r.ok) { render(); toast(r.msg, 'bad'); return; }
+    toast(decision === 'reject' ? 'Өтінім қабылданбады, авторына қайтарылды.' : last ? 'Төленді деп белгіленді.' : 'Расталды. Келесі растаушыға жіберілді.', 'ok');
+    await A.loadFin(); S.finMode = 'view'; render();
+  },
+  finPrint(id){
+    const r = S.finList.find(x => x.id === id); if (!r) return;
+    const pa = document.getElementById('printArea');
+    pa.innerHTML = receiptHTML(r, true) + `<div style="max-width:640px;margin:16px auto 0;text-align:left;font-family:'PT Sans',sans-serif">
+      <div style="font-weight:700;margin-bottom:6px">Электронды растау белгілері:</div>${stepsHTML(r)}</div>`;
+    pa.style.display = 'block';
+    setTimeout(() => { window.print(); pa.style.display = 'none'; }, 200);
+  },
+  async loadChain(){
+    const r = await rpc('admin_get_fin_chain', { p_token: S.token, p_device: deviceId() });
+    if (r.ok) { S.finChain = r.chain; render(); }
+  },
+  async saveChain(){
+    const chain = S.finChain.map((c, i) => ({ label: c.label, staff_id: (document.getElementById('chain' + i) || {}).value || null }));
+    const r = await rpc('admin_set_fin_chain', { p_token: S.token, p_device: deviceId(), p_chain: chain });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Растау тізбегі сақталды.', 'ok'); A.loadChain();
   },
   async loadAdmin(){
     const r = await rpc('admin_overview', { p_token: S.token, p_device: deviceId(), p_day: S.adminDay });
