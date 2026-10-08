@@ -120,6 +120,21 @@ table.ts td.we{background:#F1F3F7}
 .item-row input{padding:10px 12px}
 .item-row input{min-height:46px}
 .icon-btn{border:none;background:var(--ground);border-radius:10px;height:44px;width:44px;cursor:pointer;font-size:20px;color:var(--muted)}
+/* income / expense ledger */
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--ok)}
+.bar i.over{background:var(--bad)}
+.lg-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:baseline;padding:12px 0;border-top:1px solid var(--line);cursor:pointer;background:none;border-left:none;border-right:none;border-bottom:none;width:100%;text-align:left;font:inherit;color:inherit}
+.lg-row:first-child{border-top:none}
+.lg-row .bar{grid-column:1 / -1}
+.lg-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-top:1px dashed var(--line)}
+.lg-item .acts{display:flex;gap:4px}
+.lg-item button{border:none;background:none;color:var(--muted);cursor:pointer;min-width:36px;min-height:36px;border-radius:8px;font-size:16px}
+.lg-item button:hover{background:var(--ground)}
+.grid-tbl{border-collapse:collapse;font-size:13px}
+.grid-tbl th,.grid-tbl td{border-bottom:1px solid var(--line);padding:6px;text-align:right;white-space:nowrap}
+.grid-tbl th:first-child,.grid-tbl td:first-child{text-align:left;position:sticky;left:0;background:#fff;min-width:140px;white-space:normal}
+.grid-tbl input{width:104px;min-height:38px;padding:6px 8px;text-align:right;font-size:14px}
 @media print{
   body *{visibility:hidden}
   #printArea,#printArea *{visibility:visible}
@@ -279,6 +294,7 @@ function render(){
   const isAdmin = S.profile.role === 'admin';
   let body = '';
   if (S.tab === 'fin') body = finView();
+  else if (S.tab === 'ledger') body = ledgerView();
   else if (S.tab === 'me' || !isAdmin) body = meView();
   else if (S.tab === 'today') body = todayView();
   else if (S.tab === 'approve') body = approveView();
@@ -302,8 +318,9 @@ function tabsView(){
   const pend = a ? a.pending_users.length + a.staff.filter(s => s.absence && s.absence.status === 'pending').length : 0;
   const ev = a ? a.unseen_events : 0;
   const t = (id, label, n) => `<button class="tab ${S.tab===id?'on':''}" onclick="A.go('${id}')">${label}${n?`<span class="n">${n}</span>`:''}</button>`;
-  if (S.profile.role !== 'admin') return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Белгілену')}${t('fin','Қаржы өтінімдері',S.finTodo)}</nav>`;
-  return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Менің белгілеуім')}${t('today','Бүгін')}${t('fin','Қаржы өтінімдері',S.finTodo)}${t('approve','Растау',pend)}${t('events','Күдікті әрекеттер',ev)}${t('staff','Қызметкерлер')}${t('ts','Табель')}${t('settings','Баптаулар')}</nav>`;
+  const lg = S.ledgerAccess ? t('ledger','Кіріс-шығыс') : '';
+  if (S.profile.role !== 'admin') return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Белгілену')}${t('fin','Қаржы өтінімдері',S.finTodo)}${lg}</nav>`;
+  return `<nav class="tabs" aria-label="Бөлімдер">${t('me','Менің белгілеуім')}${t('today','Бүгін')}${t('fin','Қаржы өтінімдері',S.finTodo)}${lg}${t('approve','Растау',pend)}${t('events','Күдікті әрекеттер',ev)}${t('staff','Қызметкерлер')}${t('ts','Табель')}${t('settings','Баптаулар')}</nav>`;
 }
 
 const FACE_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3H5a2 2 0 0 0-2 2v2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M3 17v2a2 2 0 0 0 2 2h2"/><path d="M9 9v1"/><path d="M15 9v1"/><path d="M12 9v4h-1"/><path d="M9 16c1.7 1.3 4.3 1.3 6 0"/></svg>`;
@@ -589,6 +606,112 @@ function finTotal(){
   if (w) w.textContent = kzWords(finSum()) + ' теңге';
 }
 
+// ---------- income / expense ledger ----------
+const PERIODS = [['2026-09','Қыркүйек'],['2026-10','Қазан'],['2026-11','Қараша'],['2026-12','Желтоқсан'],['2027-01','Қаңтар'],
+  ['2027-02','Ақпан'],['2027-03','Наурыз'],['2027-04','Сәуір'],['2027-05','Мамыр'],['2027-vac','Отпускной']];
+const periodLabel = p => (PERIODS.find(x => x[0] === p) || [p, p])[1];
+const fmtM = n => { const v = Math.round(Number(n) || 0); return v.toLocaleString('ru-RU') + ' ₸'; };
+function short(n){ const v = Number(n) || 0; return Math.abs(v) >= 1e6 ? (v / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 1 }) + ' млн' : fmtM(v); }
+function lgPlan(cat, per){ return S.lg.budget.filter(b => (cat == null || b.category_id === cat) && (per == null || b.period === per)).reduce((s, b) => s + Number(b.amount), 0); }
+function lgFact(cat, per, kind){ return S.lg.entries.filter(e => e.kind === (kind || 'expense') && (cat == null || e.category_id === cat) && (per == null || e.period === per)).reduce((s, e) => s + Number(e.amount), 0); }
+function barHTML(fact, plan){
+  const pct = plan > 0 ? Math.min(100, fact / plan * 100) : (fact > 0 ? 100 : 0);
+  return `<div class="bar"><i class="${plan > 0 && fact > plan ? 'over' : ''}" style="width:${pct}%"></i></div>`;
+}
+function ledgerView(){
+  const L = S.lg;
+  if (!L) return '<div class="loading">Жүктелуде…</div>';
+  const v = S.lgView || 'overview';
+  const chip = (id, label) => `<button class="chip ${v===id?'on':''}" onclick="S.lgView='${id}';render()">${label}</button>`;
+  let body = '';
+  if (v === 'overview') {
+    const incPlan = L.income_plan.reduce((s, x) => s + Number(x.amount), 0);
+    const expPlan = lgPlan(), expFact = lgFact(), incFact = lgFact(null, null, 'income');
+    const months = PERIODS.map(([p, lbl]) => {
+      const pl = lgPlan(null, p), fa = lgFact(null, p), diff = pl - fa;
+      return `<button class="lg-row" onclick="S.lgView='month';S.lgPeriod='${p}';render()">
+        <b>${lbl}${p === L.current_period ? ' <span class="badge b-info">қазір</span>' : ''}</b>
+        <span><b>${fmtM(fa)}</b> <span class="small muted">/ ${short(pl)}</span></span>
+        ${barHTML(fa, pl)}
+        ${fa > 0 ? `<span class="small" style="grid-column:1/-1;color:${diff < 0 ? 'var(--bad)' : 'var(--muted)'}">${diff < 0 ? 'Жоспардан асқан: ' + fmtM(-diff) : 'Жоспардан қалған: ' + fmtM(diff)}</span>` : ''}
+      </button>`;
+    }).join('');
+    const cats = L.categories.map(c => {
+      const pl = lgPlan(c.id), fa = lgFact(c.id);
+      return `<div class="lg-row" style="cursor:default"><b>${esc(c.name)}</b><span><b>${fmtM(fa)}</b> <span class="small muted">/ ${short(pl)}</span></span>${barHTML(fa, pl)}</div>`;
+    }).join('');
+    body = `<div class="tiles">
+        <div class="tile" style="color:var(--ok);cursor:default"><span class="small">Кіріс жоспары (жыл)</span><span class="v" style="font-size:20px">${short(incPlan)}</span></div>
+        <div class="tile" style="color:var(--late);cursor:default"><span class="small">Шығыс жоспары (жыл)</span><span class="v" style="font-size:20px">${short(expPlan)}</span></div>
+        <div class="tile" style="color:var(--navy);cursor:default"><span class="small">Жоспарлы қалдық</span><span class="v" style="font-size:20px">${short(incPlan - expPlan)}</span></div>
+        <div class="tile" style="color:var(--bad);cursor:default"><span class="small">Нақты шығыс (осы жыл)</span><span class="v" style="font-size:20px">${short(expFact)}</span></div>
+        ${incFact ? `<div class="tile" style="color:var(--ok);cursor:default"><span class="small">Нақты кіріс</span><span class="v" style="font-size:20px">${short(incFact)}</span></div>` : ''}
+      </div>
+      <section class="card"><h2 style="font-size:18px">Айлар бойынша шығыс</h2><div class="small muted">Нақты / жоспар. Айды басып, ішіндегі жолдарды көріңіз.</div><div class="list">${months}</div></section>
+      <section class="card"><h2 style="font-size:18px">Баптар бойынша (жыл)</h2><div class="list">${cats}</div></section>`;
+  } else if (v === 'month') {
+    const p = S.lgPeriod || L.current_period;
+    const pchips = PERIODS.map(([code, lbl]) => `<button class="chip ${p===code?'on':''}" style="padding:8px 12px" onclick="S.lgPeriod='${code}';render()">${lbl}</button>`).join('');
+    const sections = L.categories.map(c => {
+      const items = L.entries.filter(e => e.kind === 'expense' && e.period === p && e.category_id === c.id);
+      const fa = items.reduce((s, e) => s + Number(e.amount), 0), pl = lgPlan(c.id, p);
+      return `<section class="card" style="gap:6px">
+        <div class="row" style="justify-content:space-between;align-items:baseline"><b>${esc(c.name)}</b><span><b>${fmtM(fa)}</b> <span class="small muted">/ ${short(pl)}</span></span></div>
+        ${barHTML(fa, pl)}
+        ${items.map(e => `<div class="lg-item"><span style="min-width:0;overflow-wrap:anywhere">${esc(e.name)}${e.source === 'request' ? ' <span class="badge b-info">өтінім</span>' : ''}</span>
+          <span class="row" style="gap:6px;flex-wrap:nowrap"><b style="white-space:nowrap">${fmtM(e.amount)}</b>
+          <span class="acts"><button aria-label="Өзгерту" onclick="A.lgEdit(${e.id})">✎</button><button aria-label="Өшіру" onclick="A.lgRemove(${e.id})">×</button></span></span></div>`).join('')}
+        <button class="btn btn-light btn-sm" style="align-self:flex-start;margin-top:6px" onclick="A.lgEdit(null,'expense',${c.id})">+ Шығыс қосу</button>
+      </section>`;
+    }).join('');
+    const inc = L.entries.filter(e => e.kind === 'income' && e.period === p);
+    const tot = lgFact(null, p), plan = lgPlan(null, p);
+    body = `<div class="chips">${pchips}</div>
+      <section class="card"><div class="rc-total"><span style="font-weight:700">${periodLabel(p)}: барлық шығыс</span><span class="v" style="font-size:22px">${fmtM(tot)}</span></div>
+        <div class="small muted">Жоспар: ${fmtM(plan)} · ${tot > plan ? '<span style="color:var(--bad)">асқан: ' + fmtM(tot - plan) + '</span>' : 'қалған: ' + fmtM(plan - tot)}</div>
+        <button class="btn btn-light btn-sm" style="align-self:flex-start" onclick="A.lgCsv('${p}')">Excel-ге жүктеу</button></section>
+      ${sections}
+      <section class="card" style="gap:6px"><div class="row" style="justify-content:space-between"><b>Кіріс</b><b style="color:var(--ok)">${fmtM(inc.reduce((s, e) => s + Number(e.amount), 0))}</b></div>
+        ${inc.map(e => `<div class="lg-item"><span>${esc(e.name)}</span><span class="row" style="gap:6px;flex-wrap:nowrap"><b style="white-space:nowrap">${fmtM(e.amount)}</b>
+          <span class="acts"><button aria-label="Өзгерту" onclick="A.lgEdit(${e.id})">✎</button><button aria-label="Өшіру" onclick="A.lgRemove(${e.id})">×</button></span></span></div>`).join('') || '<div class="small muted">Бұл айға кіріс енгізілмеген.</div>'}
+        <button class="btn btn-light btn-sm" style="align-self:flex-start;margin-top:6px" onclick="A.lgEdit(null,'income')">+ Кіріс қосу</button></section>`;
+  } else if (v === 'income') {
+    const rows = L.income_plan.map(g => `<tr><td><b>${g.grade}-сынып</b></td>
+        <td><input inputmode="numeric" value="${g.students_a ?? ''}" onchange="A.lgIncome(${g.grade}, 'students_a', this.value)" style="width:64px"></td>
+        <td><input inputmode="numeric" value="${g.students_b ?? ''}" onchange="A.lgIncome(${g.grade}, 'students_b', this.value)" style="width:64px"></td>
+        <td><input inputmode="numeric" value="${Math.round(g.amount)}" onchange="A.lgIncome(${g.grade}, 'amount', this.value)" style="width:130px"></td></tr>`).join('');
+    const tot = L.income_plan.reduce((s, x) => s + Number(x.amount), 0);
+    const ta = L.income_plan.reduce((s, x) => s + (x.students_a || 0), 0), tb = L.income_plan.reduce((s, x) => s + (x.students_b || 0), 0);
+    const byMonth = PERIODS.map(([p, lbl]) => { const f = lgFact(null, p, 'income'); return f ? `<div class="lg-item"><span>${lbl}</span><b>${fmtM(f)}</b></div>` : ''; }).join('');
+    body = `<section class="card"><h2 style="font-size:18px">Сыныптар бойынша кіріс жоспары</h2>
+        <div class="small muted">Excel-дегі «Прибыль» парағынан көшірілді. Ұяшықты өзгерткенде бірден сақталады.</div>
+        <div class="tsbox" style="box-shadow:none"><table class="grid-tbl"><thead><tr><th>Сынып</th><th>Оқушы (1)</th><th>Оқушы (2)</th><th>Жылдық сома, ₸</th></tr></thead>
+        <tbody>${rows}<tr><td><b>Барлығы</b></td><td><b>${ta}</b></td><td><b>${tb}</b></td><td><b>${fmtM(tot)}</b></td></tr></tbody></table></div></section>
+      <section class="card"><h2 style="font-size:18px">Нақты түскен кіріс</h2>
+        ${byMonth || '<div class="small muted">Әзірге енгізілмеген. Айлар бөлімінде «+ Кіріс қосу» арқылы енгізуге болады.</div>'}</section>`;
+  } else if (v === 'plan') {
+    const head = '<th>Бап</th>' + PERIODS.map(([, l]) => `<th>${l}</th>`).join('') + '<th>Жыл</th>';
+    const rows = L.categories.map(c => `<tr><td><b>${esc(c.name)}</b></td>${PERIODS.map(([p]) => {
+        const b = L.budget.find(x => x.category_id === c.id && x.period === p);
+        return `<td><input inputmode="numeric" value="${b ? Math.round(b.amount) : ''}" onchange="A.lgBudget(${c.id}, '${p}', this.value)"></td>`;
+      }).join('')}<td><b>${fmtM(lgPlan(c.id))}</b></td></tr>`).join('');
+    const totals = '<tr><td><b>Барлығы</b></td>' + PERIODS.map(([p]) => `<td><b>${short(lgPlan(null, p))}</b></td>`).join('') + `<td><b>${fmtM(lgPlan())}</b></td></tr>`;
+    body = `<section class="card"><h2 style="font-size:18px">Шығыс жоспары</h2><div class="small muted">Ұяшықты өзгерткенде бірден сақталады.</div>
+      <div class="tsbox" style="box-shadow:none"><table class="grid-tbl"><thead><tr>${head}</tr></thead><tbody>${rows}${totals}</tbody></table></div></section>`;
+  } else if (v === 'access') {
+    const ids = new Set(L.viewers.map(x => x.id));
+    body = `<section class="card"><h2 style="font-size:18px">Бұл бөлімді кім көреді</h2>
+      ${L.viewers.map(x => `<div class="lg-item"><span><b>${esc(x.full_name)}</b> <span class="small muted">· ${esc(x.position)}</span></span>
+        ${x.id === S.profile.id ? '<span class="small muted">Сіз</span>' : `<button class="btn btn-bad btn-sm" onclick="A.lgViewer('${x.id}', false)">Алып тастау</button>`}</div>`).join('')}
+      <label style="margin-top:8px">Қосу<select id="lgAdd"><option value="">— таңдаңыз —</option>${L.staff.filter(s => !ids.has(s.id)).map(s => `<option value="${s.id}">${esc(s.full_name)} · ${esc(s.position)}</option>`).join('')}</select></label>
+      <button class="btn btn-dark" onclick="A.lgViewer(document.getElementById('lgAdd').value, true)">Рұқсат беру</button></section>`;
+  }
+  return `<div class="stack" style="max-width:760px;margin:0 auto">
+    <h1 class="display" style="font-size:24px">Кіріс-шығыс · 2026–2027</h1>
+    <div class="chips">${chip('overview','Шолу')}${chip('month','Айлар')}${chip('income','Кіріс')}${chip('plan','Жоспар')}${chip('access','Рұқсат')}</div>
+    ${body}</div>`;
+}
+
 // ---------- admin views ----------
 function statusOf(s){
   if (s.check_in) return s.late_min > 0 ? 'late' : 'ok';
@@ -837,7 +960,7 @@ const A = {
       render(); toast(r.msg, 'bad'); return;
     }
     S.profile = r.profile; S.today = r.today; S.finTodo = r.fin_todo || 0;
-    S.tgLinked = !!r.tg_linked; S.tgReady = !!r.tg_ready; render();
+    S.tgLinked = !!r.tg_linked; S.tgReady = !!r.tg_ready; S.ledgerAccess = !!r.ledger_access; render();
     // opened from a Telegram message: go straight to that request
     if (S.openFin) { const id = S.openFin; S.openFin = null; A.go('fin'); await A.loadFin(); A.finOpen(id); return; }
     // opened by scanning the school QR with the phone camera
@@ -934,6 +1057,7 @@ const A = {
     if (tab === 'fin') { S.finMode = 'list'; if (!S.finFilter) S.finFilter = S.finTodo ? 'todo' : 'all'; }
     render();
     if (tab === 'fin') { A.loadFin(); return; }
+    if (tab === 'ledger') { A.loadLedger(); return; }
     if (S.profile.role !== 'admin') return;
     if (tab === 'ts') A.loadTs();
     if (tab === 'settings') A.loadChain();
@@ -953,6 +1077,73 @@ const A = {
     const r = await rpc('tg_unlink', { p_token: S.token, p_device: deviceId() });
     if (!r.ok) { toast(r.msg, 'bad'); return; }
     S.tgLinked = false; render(); toast('Өшірілді.', 'ok');
+  },
+  // ----- income / expense ledger -----
+  async loadLedger(){
+    const r = await rpc('ledger_get', { p_token: S.token, p_device: deviceId() });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    S.lg = r; if (!S.lgPeriod) S.lgPeriod = r.current_period; render();
+  },
+  lgEdit(id, kind, cat){
+    const e = id ? S.lg.entries.find(x => x.id === id) : { kind: kind || 'expense', category_id: cat || null, name: '', amount: '', period: S.lgPeriod || S.lg.current_period };
+    const ov = document.createElement('div'); ov.className = 'overlay';
+    ov.innerHTML = `<div class="sheet"><h2 style="font-size:18px">${id ? 'Жазбаны өзгерту' : (e.kind === 'income' ? 'Кіріс қосу' : 'Шығыс қосу')}</h2>
+      <label>Түрі<select id="lgK"><option value="expense" ${e.kind==='expense'?'selected':''}>Шығыс</option><option value="income" ${e.kind==='income'?'selected':''}>Кіріс</option></select></label>
+      <label id="lgCW">Бап<select id="lgC">${S.lg.categories.map(c => `<option value="${c.id}" ${c.id===e.category_id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
+      <label>Ай<select id="lgP">${PERIODS.map(([p, l]) => `<option value="${p}" ${p===e.period?'selected':''}>${l}</option>`).join('')}</select></label>
+      <label>Не үшін<input id="lgN" value="${esc(e.name)}" placeholder="Мысалы: Охрана"></label>
+      <label>Сома, ₸<input id="lgA" inputmode="decimal" value="${e.amount !== '' ? Math.round(e.amount * 100) / 100 : ''}"></label>
+      <button class="btn btn-dark" id="lgSave">Сақтау</button><button class="btn btn-light" id="lgCancel">Болдырмау</button></div>`;
+    document.body.appendChild(ov);
+    const syncKind = () => { ov.querySelector('#lgCW').style.display = ov.querySelector('#lgK').value === 'income' ? 'none' : ''; };
+    ov.querySelector('#lgK').onchange = syncKind; syncKind();
+    ov.querySelector('#lgCancel').onclick = () => ov.remove();
+    ov.querySelector('#lgSave').onclick = async () => {
+      const r = await rpc('ledger_save', { p_token: S.token, p_device: deviceId(), p_id: id || null, p_kind: ov.querySelector('#lgK').value,
+        p_period: ov.querySelector('#lgP').value, p_category: Number(ov.querySelector('#lgC').value) || null,
+        p_name: ov.querySelector('#lgN').value, p_amount: Number(String(ov.querySelector('#lgA').value).replace(/\s/g, '').replace(',', '.')) || null });
+      if (!r.ok) { toast(r.msg, 'bad'); return; }
+      ov.remove(); toast('Сақталды.', 'ok'); A.loadLedger();
+    };
+    setTimeout(() => ov.querySelector('#lgN').focus(), 50);
+  },
+  async lgRemove(id){
+    const e = S.lg.entries.find(x => x.id === id);
+    if (!confirm('«' + (e ? e.name : '') + '» жолын өшіресіз бе?')) return;
+    const r = await rpc('ledger_remove', { p_token: S.token, p_device: deviceId(), p_id: id });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Өшірілді.', 'ok'); A.loadLedger();
+  },
+  async lgBudget(cat, per, val){
+    const v = Number(String(val).replace(/\s/g, '').replace(',', '.')) || 0;
+    const r = await rpc('ledger_set_budget', { p_token: S.token, p_device: deviceId(), p_category: cat, p_period: per, p_amount: v });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Жоспар сақталды.', 'ok'); A.loadLedger();
+  },
+  async lgIncome(grade, field, val){
+    const g = Object.assign({}, S.lg.income_plan.find(x => x.grade === grade));
+    const v = String(val).replace(/\s/g, '').replace(',', '.');
+    g[field] = v === '' ? null : Number(v);
+    const r = await rpc('ledger_set_income_plan', { p_token: S.token, p_device: deviceId(), p_grade: grade,
+      p_a: g.students_a, p_b: g.students_b, p_amount: g.amount || 0 });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Сақталды.', 'ok'); A.loadLedger();
+  },
+  async lgViewer(id, add){
+    if (!id) { toast('Қызметкерді таңдаңыз.', 'bad'); return; }
+    if (!add && !confirm('Бұл адамның «Кіріс-шығыс» бөліміне рұқсатын алып тастайсыз ба?')) return;
+    const r = await rpc('ledger_set_viewer', { p_token: S.token, p_device: deviceId(), p_staff: id, p_add: add });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Сақталды.', 'ok'); A.loadLedger();
+  },
+  lgCsv(p){
+    const L = S.lg, q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const lines = [['Түрі', 'Бап', 'Не үшін', 'Сома'].map(q).join(';')];
+    L.entries.filter(e => e.period === p).forEach(e => lines.push([e.kind === 'income' ? 'Кіріс' : 'Шығыс',
+      (L.categories.find(c => c.id === e.category_id) || {}).name || '', e.name, String(e.amount).replace('.', ',')].map(q).join(';')));
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Кіріс-шығыс_' + periodLabel(p) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
   },
   // ----- finance requests -----
   async loadFin(){
