@@ -730,8 +730,10 @@ function todayView(){
     let badge = st==='ok' ? '<span class="badge b-ok">Уақытында</span>' : st==='late' ? `<span class="badge b-late">Кешікті · ${s.late_min} мин</span>`
       : st==='away' ? `<span class="badge b-info">${esc(s.absence.reason)}${s.absence.status==='pending'?' · растау күтуде':s.absence.status==='rejected'?' · қабылданбады':''}</span>` : '<span class="badge b-none">Белгіленбеген</span>';
     const note = s.late_reason ? 'Себебі: ' + esc(s.late_reason) : (s.absence && s.absence.note ? esc(s.absence.note) : '');
+    const outFix = s.check_in && !s.check_out
+      ? `<button class="btn btn-light btn-sm" onclick="A.setCheckout('${s.id}')">Кеткен уақытын қою</button>` : '';
     return `<div class="li"><div class="main"><b>${esc(s.full_name)}</b><span class="small muted">${esc(s.position)}${note?' · '+note:''}</span></div>
-      <div class="times"><span>Келді: <b>${esc(s.check_in||'—')}</b>${s.in_method==='qr'?` <span class="badge b-info" title="GPS дәл болмады, QR арқылы">QR · ${s.in_dist} м</span>`:''}</span><span>Кетті: <b>${esc(s.check_out||'—')}</b></span></div>${badge}</div>`;
+      <div class="times"><span>Келді: <b>${esc(s.check_in||'—')}</b>${s.in_method==='qr'?` <span class="badge b-info" title="GPS дәл болмады, QR арқылы">QR · ${s.in_dist} м</span>`:''}</span><span>Кетті: <b>${esc(s.check_out||'—')}</b>${s.out_method==='admin'?` <span class="small muted" title="${esc(s.out_by||'')}">(әкімші қойды)</span>`:''}</span></div>${badge}${outFix}</div>`;
   }).join('') || '<div class="muted" style="padding:12px 0">Бұл сүзгі бойынша ешкім жоқ.</div>';
   return `<div class="stack">
     <div class="row" style="justify-content:space-between">
@@ -1062,6 +1064,14 @@ const A = {
     if (tab === 'ts') A.loadTs();
     if (tab === 'settings') A.loadChain();
     if (tab !== 'me' && tab !== 'ts') A.loadAdmin();
+  },
+  async setCheckout(id){
+    const s = S.admin.staff.find(x => x.id === id) || {};
+    const t = prompt((s.full_name || '') + ' қашан кетті? Уақытты жазыңыз (мысалы 17:00):', '17:00');
+    if (t === null) return;
+    const r = await rpc('admin_set_checkout', { p_token: S.token, p_device: deviceId(), p_staff: id, p_day: S.admin.day, p_time: t.trim() });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Кеткен уақыты қойылды.', 'ok'); A.loadAdmin();
   },
   // ----- Telegram -----
   async tgLink(){
