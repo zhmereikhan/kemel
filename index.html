@@ -260,6 +260,11 @@ const S = {
   ts: null, tsYear: null, tsMonth: null
 };
 
+// a link from Telegram: #fin=7 opens that finance request after sign-in
+(function(){
+  const m = location.hash.match(/fin=(\d+)/);
+  if (m) { S.openFin = Number(m[1]); history.replaceState(null, '', location.pathname + location.search); }
+})();
 // pick up the school QR when the page is opened by scanning it with the phone camera
 (function(){
   const u = new URL(location.href);
@@ -429,6 +434,13 @@ function meView(){
     }
   }
   if (S.pend) main = pendView(t.school || {}) + main;
+  if (S.tgReady) main += S.tgLinked
+    ? `<section class="card"><div class="row" style="justify-content:space-between"><span><b>Telegram</b> · <span style="color:var(--ok)">қосулы ✓</span></span>
+        <button class="btn btn-light btn-sm" onclick="A.tgUnlink()">Өшіру</button></div>
+        <div class="small muted">Растауды күтетін өтінімдер мен маңызды хабарламалар Telegram-ға келеді.</div></section>`
+    : `<section class="card"><h2 style="font-size:18px">Telegram хабарламалары</h2>
+        <div class="small muted">Қосып қойсаңыз, сіздің шешіміңізді күтетін өтінім келгенде немесе өтініміңіз қаралғанда Telegram-ға хабар келеді.</div>
+        <button class="btn btn-dark" onclick="A.tgLink()">Telegram-ды қосу</button></section>`;
   return `<div class="stack" style="max-width:520px;margin:0 auto">
     <div class="muted">${t.day ? fmtDay(t.day) : ''}</div>${main}</div>`;
 }
@@ -824,7 +836,10 @@ const A = {
       if (r.logout) { S.token = null; ls('kemel_token', null); S.profile = null; }
       render(); toast(r.msg, 'bad'); return;
     }
-    S.profile = r.profile; S.today = r.today; S.finTodo = r.fin_todo || 0; render();
+    S.profile = r.profile; S.today = r.today; S.finTodo = r.fin_todo || 0;
+    S.tgLinked = !!r.tg_linked; S.tgReady = !!r.tg_ready; render();
+    // opened from a Telegram message: go straight to that request
+    if (S.openFin) { const id = S.openFin; S.openFin = null; A.go('fin'); await A.loadFin(); A.finOpen(id); return; }
     // opened by scanning the school QR with the phone camera
     if (S.pendingQr) {
       const at = S.today.attendance;
@@ -923,6 +938,21 @@ const A = {
     if (tab === 'ts') A.loadTs();
     if (tab === 'settings') A.loadChain();
     if (tab !== 'me' && tab !== 'ts') A.loadAdmin();
+  },
+  // ----- Telegram -----
+  async tgLink(){
+    const r = await rpc('tg_link_code', { p_token: S.token, p_device: deviceId() });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    toast('Telegram ашылады. «Start / Бастау» батырмасын басыңыз.');
+    window.location.href = r.url;
+    // when the person comes back, refresh the status
+    setTimeout(() => A.loadMe(), 8000);
+  },
+  async tgUnlink(){
+    if (!confirm('Telegram хабарламаларын өшіресіз бе?')) return;
+    const r = await rpc('tg_unlink', { p_token: S.token, p_device: deviceId() });
+    if (!r.ok) { toast(r.msg, 'bad'); return; }
+    S.tgLinked = false; render(); toast('Өшірілді.', 'ok');
   },
   // ----- finance requests -----
   async loadFin(){
