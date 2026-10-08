@@ -504,6 +504,7 @@ function tsView(){
     <div class="row" style="justify-content:space-between"><h1 class="display" style="font-size:24px">Табель</h1>
       <div class="row"><select onchange="A.tsMonth(+this.value)" style="width:auto">${monthOpts}</select>
         <input type="number" value="${S.tsYear}" min="2024" max="2100" onchange="A.tsYear(+this.value)" style="width:100px">
+        <button class="btn btn-light btn-sm" onclick="A.loadTs()">Жаңарту</button>
         <button class="btn btn-dark btn-sm" onclick="A.csv()" ${ts?'':'disabled'}>Excel-ге жүктеу</button></div></div>
     <div class="row small muted" style="gap:16px"><span>Сан — жұмыс сағаты</span><span><b style="color:var(--bad)">А</b> — ауруы</span><span><b style="color:var(--info)">С</b> — іссапар</span><span><b style="color:var(--late)">Б</b> — басқа себеп</span><span><b style="color:var(--late)">?</b> — «кеттім» белгіленбеген</span></div>
     ${table}
@@ -730,7 +731,7 @@ const A = {
   // admin
   go(tab){
     S.tab = tab; render();
-    if (tab === 'ts' && !S.ts) A.loadTs();
+    if (tab === 'ts') A.loadTs();
     if (tab !== 'me' && tab !== 'ts') A.loadAdmin();
   },
   async loadAdmin(){
