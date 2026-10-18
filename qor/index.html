@@ -291,10 +291,9 @@ function renderMember(tabsHtml=""){
    <div class="list">
     <div class="li"><span class="grow name">Қор иесінің үлесі</span><b class="num">${money(me.owner_total)}</b></div>
     <div class="li"><span class="grow name">${me.grp==="biz"?"Кәсіпкерлердің":"Ұстаздардың"} үлесі</span><b class="num">${money(me.teachers_total)}</b></div>
-    ${me.repaid?`<div class="li"><span class="grow name">Үй алғандардың қайтарғаны</span><b class="num">${money(me.repaid)}</b></div>`:""}
    </div>
-   ${me.fund>0?`<div class="bar" style="display:flex"><i style="width:${me.owner_total/me.fund*100}%;border-radius:0"></i><i style="width:${me.teachers_total/me.fund*100}%;background:var(--ok);border-radius:0"></i><i style="width:${me.repaid/me.fund*100}%;background:var(--h-roof);border-radius:0"></i></div>
-   <div class="row hint" style="gap:14px"><span style="flex:0 0 auto"><span style="color:var(--gold)">●</span> Қор иесі</span><span style="flex:0 0 auto"><span style="color:var(--ok)">●</span> ${GN[me.grp]}</span>${me.repaid?`<span style="flex:0 0 auto"><span style="color:var(--h-roof)">●</span> Қайтарылғаны</span>`:""}</div>`:""}
+   ${me.fund>0?`<div class="bar" style="display:flex"><i style="width:${me.owner_total/me.fund*100}%;border-radius:0"></i><i style="width:${me.teachers_total/me.fund*100}%;background:var(--ok);border-radius:0"></i></div>
+   <div class="row hint" style="gap:14px"><span style="flex:0 0 auto"><span style="color:var(--gold)">●</span> Қор иесі</span><span style="flex:0 0 auto"><span style="color:var(--ok)">●</span> ${GN[me.grp]}</span></div>`:""}
    <div class="hint">${me.grp==="biz"?"Кәсіпкерлердің":"Ұстаздардың"} әрқайсысы қанша салғаны көрсетілмейді, тек жалпы сомасы.</div></section>
   ${giving?`<section class="card"><h2>Үлес қосу</h2>${A?`<div class="hint">Сенің салымың бірден расталады. Барлығы салғаның: <b class="num">${money(own)}</b></div>`:payInfoBlock()}
    <form id="payF" class="card" style="border:none;padding:0">
@@ -380,6 +379,7 @@ function renderHomes(){
   const homesG=homes.filter(x=>(x.grp||"teacher")===viewGrp);
   const sumLeft=homesG.reduce((a,x)=>a+Math.max(0,x.total-x.paid),0), sumPaid=homesG.reduce((a,x)=>a+ +x.paid,0);
   return `<section class="card"><div class="row" style="justify-content:space-between"><h2>Үйлер · ${homesG.length}</h2><button class="small pri" id="homeNew" style="flex:0 0 auto">+ Үй қосу</button></div>
+   <div class="hint">Үйлерден түскен төлемдер қорға өздігінен қосылмайды. Қорға салғың келгенін «Басты» бөлімінде «Үлес қосу» арқылы саласың.</div>
    ${homesG.length?`<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><b class="num" style="font-size:18px">${money(sumPaid)}</b><span>қайтарылды</span></div><div class="stat"><b class="num" style="font-size:18px">${money(sumLeft)}</b><span>қайтарылуы керек</span></div></div>`:""}
    ${homesG.length?`<div class="list">${homesG.map(x=>{const c=calc(x);return `<button class="li" data-home="${x.id}" style="all:unset;cursor:pointer;display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)">
       <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div style="min-width:0"><div class="name" style="font-weight:600">${esc(x.title)}</div><div class="hint">${esc(x.buyer)}</div></div>${homeStatus(c)}</div>
@@ -480,7 +480,7 @@ function renderAdmin(){
     body=`<section class="card"><h2>Мұғалімдер көретін үздік 10</h2>${topList(me.top)}</section>${rules()}`;
   }
   return `${head(`<button class="small" id="out">Шығу</button>`)}
-  <section class="vault"><div class="eyebrow">${GN[viewGrp]} қоры · қор иесі</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы · оның ішінде үйлерден қайтқаны ${money(me.repaid)}</div></section>
+  <section class="vault"><div class="eyebrow">${GN[viewGrp]} қоры · қор иесі</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы</div></section>
   ${noteHtml()}${faceCard()}${tabs}${body}`;
 }
 
