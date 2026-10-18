@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Баспана қоры</title>
+<meta name="theme-color" content="#1d3b3a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Golos+Text:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column, a deep "vault" band for the fund total, quiet paper cards below. */
+:root{
+  --ink:#16302f; --paper:#f3f5f2; --card:#ffffff; --line:#d9e0dc; --mute:#5e706c;
+  --vault:#1d3b3a; --vault-fg:#eaf2ee; --gold:#c9932e; --gold-soft:#f6ead1;
+  --ok:#2f7d4f; --ok-soft:#e1f1e6; --warn:#a86a10; --warn-soft:#fbefd8; --bad:#b23b3b; --bad-soft:#f8e2e2;
+  --display:"Rubik",system-ui,sans-serif; --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --ink:#e4ece9; --paper:#0f1817; --card:#172221; --line:#2a3836; --mute:#93a5a1;
+  --vault:#132a29; --vault-fg:#eaf2ee; --gold:#e0b158; --gold-soft:#3a2f17;
+  --ok:#6cc48f; --ok-soft:#173326; --warn:#e3a94a; --warn-soft:#3a2a12; --bad:#ec8080; --bad-soft:#3b1d1d;
+  color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--body);
+  padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(32px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:560px;margin:0 auto;display:grid;gap:16px;padding-top:16px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:24px;font-weight:700} h2{font-size:18px;font-weight:600} h3{font-size:15px;font-weight:600}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);font-weight:600}
+.num{font-variant-numeric:tabular-nums}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:34px;height:34px;border-radius:9px;background:var(--vault);display:grid;place-items:center;flex:none}
+.mark svg{width:20px;height:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:12px}
+.vault{background:var(--vault);color:var(--vault-fg);border-radius:18px;padding:22px 20px;display:grid;gap:6px;position:relative;overflow:hidden}
+.vault .eyebrow{color:#a9c3bc}
+.vault .big{font-family:var(--display);font-size:clamp(30px,9vw,42px);font-weight:700;line-height:1.1}
+.vault .sub{color:#bcd2cc;font-size:14px}
+.vault::after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;
+  border:22px solid rgba(201,147,46,.18)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{display:grid;gap:2px}
+.stat b{font-family:var(--display);font-size:22px;font-weight:600}
+.stat span{font-size:12px;color:var(--mute)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold);border-radius:99px;transition:width .4s}
+.hint{font-size:13px;color:var(--mute)}
+label{display:grid;gap:4px;font-size:13px;font-weight:500;color:var(--mute)}
+input,textarea{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;min-width:0}
+input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1 1 140px;min-width:0}
+button{font:inherit;font-weight:600;border-radius:10px;padding:11px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.pri{background:var(--vault);border-color:var(--vault);color:var(--vault-fg)}
+@media (prefers-color-scheme:dark){button.pri{background:var(--gold);border-color:var(--gold);color:#1a1405}}
+button.gold{background:var(--gold-soft);border-color:transparent;color:var(--ink)}
+button.small{padding:7px 10px;font-size:13px}
+button.link{background:none;border:none;padding:4px 0;color:var(--mute);text-decoration:underline;font-weight:500}
+button:disabled{opacity:.55;cursor:wait}
+.list{display:grid}
+.li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.li:first-child{border-top:none}
+.li .grow{flex:1;min-width:0}
+.li .name{font-weight:500;overflow-wrap:anywhere}
+.place{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:600;font-size:13px;background:var(--paper);flex:none}
+.place.p1{background:var(--gold);color:#1a1405}
+.me-row{background:var(--gold-soft);margin:0 -10px;padding-left:10px;padding-right:10px;border-radius:10px;border-top-color:transparent}
+.pill{font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.wait{background:var(--warn-soft);color:var(--warn)} .pill.no{background:var(--bad-soft);color:var(--bad)}
+.msg{padding:10px 12px;border-radius:10px;font-size:14px}
+.msg.err{background:var(--bad-soft);color:var(--bad)} .msg.ok{background:var(--ok-soft);color:var(--ok)}
+.tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{flex:1;border:none;background:none;padding:9px 6px}
+.tabs button.on{background:var(--paper);box-shadow:0 1px 0 var(--line)}
+.badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:12px;margin-left:4px}
+.rules{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:99px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+.empty{color:var(--mute);font-size:14px;padding:6px 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="card"><div class="hint">Жүктелуде…</div></div></div>
+<div class="toast" id="toast" hidden></div>
+<script>
+const SB="https://gzupbqtvfchgzxevkahx.supabase.co";
+const KEY="sb_publishable_2v6DTUcUYh4vPeH0_PHfSg_gZ0xx4i_";
+const ERR={PHONE:"Телефон нөмірін толық жазыңыз, мысалы 8 701 123 45 67.",PIN:"Құпиясөз кемінде 6 таңбадан тұрсын.",NAME:"Аты-жөніңізді толық жазыңыз.",
+ EXISTS:"Бұл нөмір тіркеліп қойған. «Кіру» бөлімін қолданыңыз.",BUSY:"Растауды күтіп тұрған өтініш тым көп. Кейінірек қайталаңыз.",
+ BAD:"Нөмір немесе құпиясөз қате.",LOCKED:"5 рет қате терілді. 15 минуттан соң қайталаңыз.",AUTH:"Қайта кіріңіз.",
+ AMOUNT:"Соманы жазыңыз (кемінде 1 000 ₸).",DATE:"Күні дұрыс емес. Соңғы 90 күн ішіндегі күнді таңдаңыз.",TOO_MANY:"Расталмаған 10 жазба тұр. Растауды күтіңіз.",ADMIN:"Бұл тек қор иесіне."};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=n=>Math.round(+n||0).toLocaleString("ru-RU").replace(/\s/g," ")+" ₸";
+const fmtD=d=>{const x=new Date(d);return isNaN(x)?"":x.toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric"})};
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const store={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch{}}};
+let token=store.get("qor_token"), me=null, adm=null, view="login", tab="home", note=null;
+const canFace=!!(window.PublicKeyCredential&&navigator.credentials);
+
+async function rpc(fn,args){
+  const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(args)});
+  const t=await r.text(); let j=null; try{j=t?JSON.parse(t):null}catch{}
+  if(!r.ok){const code=(j&&j.message)||"";if(code==="AUTH"){logout(true)}throw new Error(ERR[code]||"Байланыс қатесі. Қайталап көріңіз.")}
+  return j;
+}
+async function fn(body){
+  const r=await fetch(`${SB}/functions/v1/coop-auth`,{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  return r.json();
+}
+function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2600)}
+function busy(btn,on){if(btn){btn.disabled=on}}
+
+/* base64url helpers for Face ID */
+const b2u=b=>{const s=String.fromCharCode(...new Uint8Array(b));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")};
+const u2b=s=>{s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";const r=atob(s),a=new Uint8Array(r.length);for(let i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a.buffer};
+const device=()=>(/iPhone|iPad/.test(navigator.userAgent)?"iPhone":/Android/.test(navigator.userAgent)?"Android":"Компьютер");
+
+async function faceAdd(btn){
+  busy(btn,true);
+  try{
+    const o=await fn({action:"register_options",token});
+    if(!o.ok)throw new Error(o.msg);
+    const op=o.options;
+    const cred=await navigator.credentials.create({publicKey:{...op,challenge:u2b(op.challenge),user:{...op.user,id:u2b(op.user.id)},
+      excludeCredentials:(op.excludeCredentials||[]).map(c=>({...c,id:u2b(c.id)}))}});
+    const resp={id:cred.id,rawId:b2u(cred.rawId),type:cred.type,clientExtensionResults:cred.getClientExtensionResults?.()||{},
+      response:{clientDataJSON:b2u(cred.response.clientDataJSON),attestationObject:b2u(cred.response.attestationObject),
+      transports:cred.response.getTransports?.()||[]}};
+    const v=await fn({action:"register_verify",response:resp,device:device()});
+    if(!v.ok)throw new Error(v.msg);
+    store.set("qor_face","1"); toast("Face ID қосылды"); await load();
+  }catch(e){ if(e.name==="NotAllowedError")toast("Face ID тоқтатылды"); else if(e.name==="InvalidStateError")toast("Бұл телефонда Face ID бұрыннан қосулы"); else toast(e.message||"Face ID қосылмады") }
+  busy(btn,false);
+}
+async function faceLogin(btn){
+  busy(btn,true); note=null;
+  try{
+    const o=await fn({action:"auth_options"});
+    if(!o.ok)throw new Error(o.msg);
+    const op=o.options;
+    const a=await navigator.credentials.get({publicKey:{...op,challenge:u2b(op.challenge),allowCredentials:[]}});
+    const resp={id:a.id,rawId:b2u(a.rawId),type:a.type,clientExtensionResults:a.getClientExtensionResults?.()||{},
+      response:{clientDataJSON:b2u(a.response.clientDataJSON),authenticatorData:b2u(a.response.authenticatorData),
+      signature:b2u(a.response.signature),userHandle:a.response.userHandle?b2u(a.response.userHandle):null}};
+    const v=await fn({action:"auth_verify",response:resp});
+    if(!v.ok)throw new Error(v.msg);
+    token=v.token; store.set("qor_token",token); await load(); return;
+  }catch(e){ note={err:e.name==="NotAllowedError"?"Face ID тоқтатылды. Қайталаңыз немесе құпиясөзбен кіріңіз.":(e.message||"Face ID арқылы кіру сәтсіз.")} }
+  busy(btn,false); render();
+}
+
+async function load(){
+  if(!token){view="login";render();return}
+  try{ me=await rpc("coop_me",{p_token:token}); adm=me.is_admin?await rpc("coop_admin",{p_token:token}):null; view="home" }
+  catch(e){ if(!token)view="login"; else note={err:e.message} }
+  render();
+}
+function logout(silent){ if(token&&!silent)rpc("coop_logout",{p_token:token}).catch(()=>{}); token=null;me=null;adm=null;store.set("qor_token",null);view="login";if(!silent)render() }
+
+const LOGO=`<div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#c9932e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 11 12 4l9 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg></div>`;
+const head=(right="")=>`<div class="top"><div class="brand">${LOGO}<div><h1>Баспана қоры</h1><div class="hint">Мұғалімдерге үй жинағы</div></div></div>${right}</div>`;
+const noteHtml=()=>note?`<div class="msg ${note.err?"err":"ok"}">${esc(note.err||note.ok)}</div>`:"";
+const RULES=`<section class="card"><h2>Ереже қысқаша</h2><ol class="rules">
+<li>Әр 10 000 ₸ салым үшін 1 балл беріледі.</li>
+<li>Бір айда ең көбі 25 балл жинауға болады, артық салым балл қоспайды.</li>
+<li>Салым қор иесі растағаннан кейін ғана сомаға және балға қосылады.</li>
+<li>Әр салымға қор иесі қарыз қолхатын береді.</li>
+<li>Үй кезегін комиссия балл, жағдай және өтіл бойынша шешеді.</li>
+<li>Шыққысы келген адамға салымы 1 айдан кешіктірмей қайтарылады.</li></ol></section>`;
+
+function renderLogin(reg){
+  const face=canFace&&!reg?`<button class="gold" id="faceBtn">Face ID-мен кіру</button>`:"";
+  return `${head()}
+  <section class="vault"><div class="eyebrow">Ортақ мақсат</div><div class="big">Үй — бірге жинасақ</div><div class="sub">Өз салымың мен кезектегі орныңды осы жерден көресің.</div></section>
+  <section class="card"><h2>${reg?"Тіркелу":"Кіру"}</h2>${noteHtml()}
+   <form id="authF" class="card" style="border:none;padding:0">
+    ${reg?`<label for="fName">Аты-жөні<input id="fName" autocomplete="name" placeholder="Мысалы, Айгүл Серікова" required></label>`:""}
+    <label for="fPhone">Телефон нөмірі<input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="8 701 123 45 67" required></label>
+    <label for="fPin">Құпиясөз<input id="fPin" type="password" autocomplete="${reg?"new-password":"current-password"}" minlength="6" required></label>
+    ${reg?`<label for="fPin2">Құпиясөзді қайталаңыз<input id="fPin2" type="password" autocomplete="new-password" minlength="6" required></label>`:""}
+    <button class="pri" type="submit" id="authBtn">${reg?"Өтініш жіберу":"Кіру"}</button>
+    ${face}
+   </form>
+   <div class="hint">${reg?"Тіркелген соң қор иесі өтінішіңді растайды. Содан кейін ғана кіре аласың.":"Face ID алғаш рет құпиясөзбен кіргеннен кейін қосылады."}</div>
+   <button class="link" id="swap">${reg?"Тіркелгенмін, кіремін":"Алғаш рет келдім, тіркелемін"}</button>
+  </section>`;
+}
+function topList(rows){
+  if(!rows.length)return `<div class="empty">Әзірге расталған салым жоқ. Бірінші салым түскенде рейтинг осы жерде пайда болады.</div>`;
+  return `<div class="list">${rows.map((r,i)=>`<div class="li ${r.me?"me-row":""}"><span class="place ${i===0?"p1":""}">${i+1}</span><span class="grow name">${esc(r.name)}${r.me?" · сіз":""}</span><b class="num">${r.points} балл</b></div>`).join("")}</div>`;
+}
+const pill=s=>s==="confirmed"?`<span class="pill ok">Расталды</span>`:s==="pending"?`<span class="pill wait">Күтуде</span>`:`<span class="pill no">Қабылданбады</span>`;
+function faceCard(){
+  if(!canFace||me.faceid>0)return "";
+  return `<section class="card"><h3>Келесі жолы Face ID-мен кір</h3><div class="hint">Құпиясөз терудің қажеті болмайды. Бұл телефонға ғана қосылады.</div><button class="gold" id="faceAdd">Face ID қосу</button></section>`;
+}
+function renderMember(){
+  const mp=me.month_points||0;
+  return `${head(`<button class="small" id="out">Шығу</button>`)}
+  <section class="vault"><div class="eyebrow">Қорда жиналды</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы · Алматыда бір үй шамамен 25 млн ₸</div></section>
+  ${noteHtml()}
+  <section class="card"><div class="eyebrow">${esc(me.name)}</div>
+   <div class="stats"><div class="stat"><b class="num">${me.points||0}</b><span>балл</span></div><div class="stat"><b class="num">${me.rank||"—"}<small style="font-size:14px;color:var(--mute)"> / ${me.members}</small></b><span>кезектегі орын</span></div><div class="stat"><b class="num" style="font-size:17px">${money(me.total)}</b><span>расталған салым</span></div></div>
+   <div><div class="row" style="justify-content:space-between"><span class="hint">Осы айдың балы</span><b class="num">${mp} / 25</b></div><div class="bar"><i style="width:${Math.min(100,mp/25*100)}%"></i></div></div>
+   ${mp>=25?`<div class="hint">Осы айдың шегіне жеттің. Осы айғы қосымша салым балл қоспайды.</div>`:""}
+  </section>
+  <section class="card"><h2>Салым қостым</h2>
+   <form id="payF" class="card" style="border:none;padding:0">
+    <div class="row"><label for="pAmt">Сомасы, ₸<input id="pAmt" inputmode="numeric" placeholder="50 000" required></label>
+    <label for="pDate">Күні<input id="pDate" type="date" value="${today()}" max="${today()}" required></label></div>
+    <label for="pNote">Ескерту (міндетті емес)<input id="pNote" maxlength="200" placeholder="Kaspi аударым, қолма-қол…"></label>
+    <div class="hint" id="pPts">10 000 ₸ = 1 балл</div>
+    <button class="pri" type="submit" id="payBtn">Салдым деп жіберу</button>
+   </form></section>
+  ${faceCard()}
+  <section class="card"><h2>Үздік 10</h2><div class="hint">Балл бойынша. Сомалар көрсетілмейді.</div>${topList(me.top)}</section>
+  <section class="card"><h2>Менің салымдарым</h2>${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. Ақша аударған соң жоғарыдағы формаға жазыңыз.</div>`}</section>
+  ${RULES}`;
+}
+function renderAdmin(){
+  const n1=adm.new_members.length,n2=adm.pending.length;
+  const tabs=`<div class="tabs"><button data-tab="home" class="${tab==="home"?"on":""}">Растау${n1+n2?`<span class="badge">${n1+n2}</span>`:""}</button><button data-tab="members" class="${tab==="members"?"on":""}">Салымшылар</button><button data-tab="top" class="${tab==="top"?"on":""}">Рейтинг</button></div>`;
+  let body="";
+  if(tab==="home"){
+    body=`<section class="card"><h2>Жаңа салымшылар</h2>${n1?`<div class="list">${adm.new_members.map(m=>`<div class="li"><div class="grow"><div class="name">${esc(m.full_name)}</div><div class="hint num">+${esc(m.phone)} · ${fmtD(m.created_at)}</div></div><button class="small pri" data-mok="${m.id}">Растау</button><button class="small" data-mno="${m.id}">Бас тарту</button></div>`).join("")}</div>`:`<div class="empty">Жаңа өтініш жоқ.</div>`}</section>
+    <section class="card"><h2>Салымды растау</h2><div class="hint">Ақша шотқа түскенін тексеріп барып растаңыз.</div>${n2?`<div class="list">${adm.pending.map(p=>`<div class="li"><div class="grow"><div class="name">${esc(p.full_name)}</div><div class="num" style="font-weight:600">${money(p.amount)}</div><div class="hint">${fmtD(p.paid_on)}${p.note?" · "+esc(p.note):""}</div></div><button class="small pri" data-pok="${p.id}">Түсті</button><button class="small" data-pno="${p.id}">Түспеді</button></div>`).join("")}</div>`:`<div class="empty">Расталмаған салым жоқ.</div>`}</section>`;
+  }else if(tab==="members"){
+    const list=adm.members.filter(m=>!m.is_admin);
+    body=`<section class="card"><h2>Салымшылар · ${list.length}</h2>${list.length?`<div class="list">${list.map((m,i)=>`<div class="li"><span class="place">${i+1}</span><div class="grow"><div class="name">${esc(m.full_name)}</div><div class="hint num">+${esc(m.phone)}</div></div><div style="text-align:right"><b class="num">${m.points} балл</b><div class="hint num">${money(m.total)}</div></div></div>`).join("")}</div>`:`<div class="empty">Әзірге расталған салымшы жоқ. Мұғалімдерге сайт сілтемесін жіберіңіз.</div>`}</section>`;
+  }else{
+    body=`<section class="card"><h2>Мұғалімдер көретін үздік 10</h2>${topList(me.top)}</section>${RULES}`;
+  }
+  return `${head(`<button class="small" id="out">Шығу</button>`)}
+  <section class="vault"><div class="eyebrow">Қорда жиналды · қор иесі</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы · бір үйге дейін ${money(Math.max(0,25000000-me.fund))}</div></section>
+  ${noteHtml()}${faceCard()}${tabs}${body}`;
+}
+
+function render(){
+  const app=$("#app");
+  app.innerHTML=view==="home"&&me?(me.is_admin?renderAdmin():renderMember()):renderLogin(view==="register");
+  bind();
+}
+function bind(){
+  $("#swap")?.addEventListener("click",()=>{view=view==="register"?"login":"register";note=null;render()});
+  $("#faceBtn")?.addEventListener("click",e=>faceLogin(e.currentTarget));
+  $("#faceAdd")?.addEventListener("click",e=>faceAdd(e.currentTarget));
+  $("#out")?.addEventListener("click",()=>logout());
+  $("#authF")?.addEventListener("submit",async e=>{
+    e.preventDefault(); const btn=$("#authBtn"); busy(btn,true); note=null;
+    const phone=$("#fPhone").value, pin=$("#fPin").value;
+    try{
+      if(view==="register"){
+        if(pin!==$("#fPin2").value)throw new Error("Құпиясөздер сәйкес емес.");
+        const r=await rpc("coop_register",{p_phone:phone,p_name:$("#fName").value,p_pin:pin});
+        if(r==="admin"){ const l=await rpc("coop_login",{p_phone:phone,p_pin:pin}); token=l.token; store.set("qor_token",token); note={ok:"Сіз қор иесі ретінде тіркелдіңіз."}; await load(); return }
+        view="login"; note={ok:"Өтініш жіберілді. Қор иесі растаған соң осы нөмір мен құпиясөзбен кіресіз."}; render(); return;
+      }
+      const l=await rpc("coop_login",{p_phone:phone,p_pin:pin});
+      if(l.error)throw new Error(ERR[l.error]);
+      if(l.status==="pending")throw new Error("Өтінішіңіз әлі расталмаған. Қор иесі растаған соң кіре аласыз.");
+      if(l.status==="rejected")throw new Error("Өтінішіңіз қабылданбады. Қор иесіне хабарласыңыз.");
+      token=l.token; store.set("qor_token",token); await load(); return;
+    }catch(err){ note={err:err.message} }
+    busy(btn,false); render();
+  });
+  const amt=$("#pAmt");
+  amt?.addEventListener("input",()=>{const v=+amt.value.replace(/\D/g,"");amt.value=v?v.toLocaleString("ru-RU").replace(/\s/g," "):"";
+    const left=25-(me.month_points||0), p=Math.floor(v/10000);
+    $("#pPts").textContent=v?`Осы ай үшін шамамен +${Math.min(p,Math.max(0,left))} балл (расталғаннан кейін)`:"10 000 ₸ = 1 балл"});
+  $("#payF")?.addEventListener("submit",async e=>{
+    e.preventDefault(); const btn=$("#payBtn"); busy(btn,true); note=null;
+    try{ await rpc("coop_add",{p_token:token,p_amount:+amt.value.replace(/\D/g,""),p_date:$("#pDate").value,p_note:$("#pNote").value||null});
+      toast("Жіберілді. Қор иесі растағанын күтіңіз"); await load(); return }
+    catch(err){ note={err:err.message} } busy(btn,false); render();
+  });
+  document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;note=null;render()}));
+  const act=(sel,fnName,arg,msg)=>document.querySelectorAll(sel).forEach(b=>b.addEventListener("click",async()=>{
+    b.disabled=true; try{await rpc(fnName,{p_token:token,...arg(b)});toast(msg);await load()}catch(e){toast(e.message);b.disabled=false}}));
+  act("[data-cancel]","coop_cancel",b=>({p_id:b.dataset.cancel}),"Жазба өшірілді");
+  act("[data-mok]","coop_decide_member",b=>({p_id:b.dataset.mok,p_ok:true}),"Салымшы расталды");
+  act("[data-mno]","coop_decide_member",b=>({p_id:b.dataset.mno,p_ok:false}),"Өтініш қабылданбады");
+  act("[data-pok]","coop_decide_payment",b=>({p_id:b.dataset.pok,p_ok:true}),"Салым расталды");
+  act("[data-pno]","coop_decide_payment",b=>({p_id:b.dataset.pno,p_ok:false}),"Салым қабылданбады");
+}
+load();
+</script>
+</body>
+</html>
