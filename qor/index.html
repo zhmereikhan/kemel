@@ -74,7 +74,7 @@ button:disabled{opacity:.55;cursor:wait}
 .msg{padding:10px 12px;border-radius:10px;font-size:14px}
 .msg.err{background:var(--bad-soft);color:var(--bad)} .msg.ok{background:var(--ok-soft);color:var(--ok)}
 .tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
-.tabs button{flex:1;border:none;background:none;padding:9px 6px}
+.tabs button{flex:1;border:none;background:none;padding:9px 4px;font-size:13px}
 .tabs button.on{background:var(--paper);box-shadow:0 1px 0 var(--line)}
 .badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:12px;margin-left:4px}
 .rules{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
@@ -92,13 +92,14 @@ const KEY="sb_publishable_2v6DTUcUYh4vPeH0_PHfSg_gZ0xx4i_";
 const ERR={PHONE:"Телефон нөмірін толық жазыңыз, мысалы 8 701 123 45 67.",PIN:"Құпиясөз кемінде 6 таңбадан тұрсын.",NAME:"Аты-жөніңізді толық жазыңыз.",
  EXISTS:"Бұл нөмір тіркеліп қойған. «Кіру» бөлімін қолданыңыз.",BUSY:"Растауды күтіп тұрған өтініш тым көп. Кейінірек қайталаңыз.",
  BAD:"Нөмір немесе құпиясөз қате.",LOCKED:"5 рет қате терілді. 15 минуттан соң қайталаңыз.",AUTH:"Қайта кіріңіз.",
- AMOUNT:"Соманы жазыңыз (кемінде 1 000 ₸).",DATE:"Күні дұрыс емес. Соңғы 90 күн ішіндегі күнді таңдаңыз.",TOO_MANY:"Расталмаған 10 жазба тұр. Растауды күтіңіз.",ADMIN:"Бұл тек қор иесіне."};
+ AMOUNT:"Соманы жазыңыз (кемінде 1 000 ₸).",DATE:"Күні дұрыс емес. Соңғы 90 күн ішіндегі күнді таңдаңыз.",TOO_MANY:"Расталмаған 10 жазба тұр. Растауды күтіңіз.",ADMIN:"Бұл тек қор иесіне.",MONTHS:"Мерзімді 1–360 ай аралығында жазыңыз.",PATH:"Файл жолы қате."};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money=n=>Math.round(+n||0).toLocaleString("ru-RU").replace(/\s/g," ")+" ₸";
 const fmtD=d=>{const x=new Date(d);return isNaN(x)?"":x.toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric"})};
 const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
 const store={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch{}}};
+let homes=[], openHome=null, homeForm=null, armed=null;
 let token=store.get("qor_token"), me=null, adm=null, view="login", tab="home", note=null;
 const canFace=!!(window.PublicKeyCredential&&navigator.credentials);
 
@@ -156,7 +157,7 @@ async function faceLogin(btn){
 
 async function load(){
   if(!token){view="login";render();return}
-  try{ me=await rpc("coop_me",{p_token:token}); adm=me.is_admin?await rpc("coop_admin",{p_token:token}):null; view="home" }
+  try{ me=await rpc("coop_me",{p_token:token}); adm=me.is_admin?await rpc("coop_admin",{p_token:token}):null; homes=me.is_admin?await rpc("coop_homes_list",{p_token:token}):[]; view="home" }
   catch(e){ if(!token)view="login"; else note={err:e.message} }
   render();
 }
@@ -234,14 +235,120 @@ function ownerCard(){
     <button class="pri" type="submit" id="payBtn">Қорға қосу</button>
    </form></section>`;
 }
+/* ---- Үйлер ---- */
+function monthNo(d){const x=new Date(d);return x.getFullYear()*12+x.getMonth()}
+function calc(h){
+  const now=monthNo(new Date()), start=monthNo(h.start_date);
+  const idx=now-start+1;                                   // осы ай нешінші ай (1-ден)
+  const left=Math.max(1, h.months-Math.max(0,idx-1));      // осы айды қоса қалған ай
+  const paidNow=h.pays.filter(p=>monthNo(p.paid_on)===now).reduce((a,p)=>a+ +p.amount,0);
+  const remaining=Math.max(0,h.total-h.paid);
+  const monthly=Math.ceil((remaining+paidNow)/left);
+  const dueNow=Math.max(0,monthly-paidNow), restLeft=dueNow===0?Math.max(1,left-1):left;
+  return {remaining, left:restLeft, idx, paidNow, monthly:dueNow===0?Math.ceil(remaining/restLeft):monthly, dueNow, base:Math.ceil(h.total/h.months), done:remaining<=0, started:idx>=1};
+}
+const kb=n=>n>1048576?(n/1048576).toFixed(1)+" МБ":Math.max(1,Math.round(n/1024))+" КБ";
+function homeStatus(c){ if(c.done)return `<span class="pill ok">Толық төленді</span>`; if(!c.started)return `<span class="pill wait">Әлі басталмаған</span>`;
+  return c.dueNow===0?`<span class="pill ok">Осы ай төленді</span>`:`<span class="pill wait">Осы айға ${money(c.dueNow)}</span>` }
+function renderHomeForm(){
+  const h=homeForm.id?homes.find(x=>x.id===homeForm.id):null;
+  return `<section class="card"><h2>${h?"Үйді өзгерту":"Жаңа үй"}</h2>${noteHtml()}
+   <form id="homeF" class="card" style="border:none;padding:0">
+    <div class="row"><label for="hTitle">Атауы<input id="hTitle" required placeholder="Аида үйі" value="${esc(h?.title||"")}"></label>
+    <label for="hBuyer">Алушы<input id="hBuyer" required placeholder="Аида Нұрланқызы" value="${esc(h?.buyer||"")}"></label></div>
+    <label for="hTotal">Барлық төленетін сома (10% қосылған), ₸<input id="hTotal" inputmode="numeric" required placeholder="30 000 000" value="${h?(+h.total).toLocaleString("ru-RU").replace(/\s/g," "):""}"></label>
+    <div class="row"><label for="hStart">Бірінші төлем айы<input id="hStart" type="date" required value="${h?.start_date||today()}"></label>
+    <label for="hMonths">Мерзімі, ай<input id="hMonths" inputmode="numeric" required placeholder="60" value="${h?.months||60}"></label></div>
+    ${h?"":`<label for="hPaid">Бұған дейін төлегені, ₸ (бар болса)<input id="hPaid" inputmode="numeric" placeholder="0"></label>`}
+    <label for="hNote">Ескерту<input id="hNote" maxlength="300" placeholder="Мекенжайы, пәтер нөмірі…" value="${esc(h?.note||"")}"></label>
+    <div class="hint" id="hCalc"></div>
+    <div class="row"><button class="pri" type="submit" id="homeBtn">Сақтау</button><button type="button" id="homeCancel">Болдырмау</button></div>
+   </form></section>`;
+}
+function renderHomes(){
+  if(homeForm)return renderHomeForm();
+  const h=openHome&&homes.find(x=>x.id===openHome);
+  if(h)return renderHome(h);
+  const sumLeft=homes.reduce((a,x)=>a+Math.max(0,x.total-x.paid),0), sumPaid=homes.reduce((a,x)=>a+ +x.paid,0);
+  return `<section class="card"><div class="row" style="justify-content:space-between"><h2>Үйлер · ${homes.length}</h2><button class="small pri" id="homeNew" style="flex:0 0 auto">+ Үй қосу</button></div>
+   ${homes.length?`<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><b class="num" style="font-size:18px">${money(sumPaid)}</b><span>қайтарылды</span></div><div class="stat"><b class="num" style="font-size:18px">${money(sumLeft)}</b><span>қайтарылуы керек</span></div></div>`:""}
+   ${homes.length?`<div class="list">${homes.map(x=>{const c=calc(x);return `<button class="li" data-home="${x.id}" style="all:unset;cursor:pointer;display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)">
+      <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div style="min-width:0"><div class="name" style="font-weight:600">${esc(x.title)}</div><div class="hint">${esc(x.buyer)}</div></div>${homeStatus(c)}</div>
+      <div class="bar"><i style="width:${Math.min(100,x.paid/x.total*100)}%"></i></div>
+      <div class="row hint num" style="justify-content:space-between"><span>Қалды ${money(c.remaining)}</span><span>${c.done?"":"Айына "+money(c.monthly)+" · "+c.left+" ай"}</span></div></button>`}).join("")}</div>`
+   :`<div class="empty">Әзірге үй жоқ. «Үй қосу» батырмасымен сатылған үйлерді енгіз: атауы, алушысы, төленетін сома және мерзімі.</div>`}</section>`;
+}
+function renderHome(h){
+  const c=calc(h);
+  return `<button class="link" id="homeBack">← Барлық үйлер</button>
+  <section class="vault"><div class="eyebrow">${esc(h.buyer)}</div><div class="big" style="font-size:clamp(24px,7vw,32px)">${esc(h.title)}</div>
+   <div class="sub num">Қалды ${money(c.remaining)} · барлығы ${money(h.total)}</div></section>
+  ${noteHtml()}
+  <section class="card"><div class="stats"><div class="stat"><b class="num" style="font-size:17px">${c.done?"—":money(c.monthly)}</b><span>айлық төлем</span></div>
+   <div class="stat"><b class="num">${c.done?0:c.left}</b><span>ай қалды</span></div><div class="stat"><b class="num" style="font-size:17px">${money(h.paid)}</b><span>төленді</span></div></div>
+   <div class="bar"><i style="width:${Math.min(100,h.paid/h.total*100)}%"></i></div>
+   <div class="hint">Бастапқы айлық ${money(c.base)} · ${h.months} ай · басталуы ${fmtD(h.start_date)}${h.note?" · "+esc(h.note):""}. Аз не көп төлесе, айлық төлем қалған сома мен қалған айға қарай өзі қайта есептеледі.</div>
+   <div>${homeStatus(c)}</div></section>
+  ${c.done?"":`<section class="card"><h2>Төледі</h2>
+   <form id="hpF" class="card" style="border:none;padding:0">
+    <div class="row"><label for="hpAmt">Сомасы, ₸<input id="hpAmt" inputmode="numeric" required value="${(c.dueNow||c.monthly).toLocaleString("ru-RU").replace(/\s/g," ")}"></label>
+    <label for="hpDate">Күні<input id="hpDate" type="date" required value="${today()}" max="${today()}"></label></div>
+    <label for="hpNote">Ескерту (міндетті емес)<input id="hpNote" maxlength="200" placeholder="Kaspi, қолма-қол…"></label>
+    <button class="pri" type="submit" id="hpBtn">Төледі деп белгілеу</button></form></section>`}
+  <section class="card"><h2>Құжаттар</h2><div class="hint">Сату-сатып алу шарты, қолхат, техпаспорт. Тек сен ғана көресің.</div>
+   ${h.docs.length?`<div class="list">${h.docs.map(d=>`<div class="li"><div class="grow"><div class="name">${esc(d.name)}</div><div class="hint">${kb(d.size||0)} · ${fmtD(d.created_at)}</div></div><button class="small" data-dopen="${d.id}">Ашу</button><button class="small" data-ddel="${d.id}">${armed==="d"+d.id?"Растау":"Өшіру"}</button></div>`).join("")}</div>`:`<div class="empty">Құжат жоқ.</div>`}
+   <label for="docIn" style="display:block"><span class="hint">PDF, сурет немесе Word, 20 МБ дейін</span><input id="docIn" type="file" multiple accept=".pdf,image/*,.doc,.docx"></label>
+   <div class="hint" id="docMsg"></div></section>
+  <section class="card"><h2>Төлемдер тарихы</h2>${h.pays.length?`<div class="list">${h.pays.map(p=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(p.amount)}</div><div class="hint">${fmtD(p.paid_on)}${p.note?" · "+esc(p.note):""}</div></div><button class="small" data-hpdel="${p.id}">${armed==="p"+p.id?"Растау":"Өшіру"}</button></div>`).join("")}</div>`:`<div class="empty">Әлі төлем жоқ.</div>`}</section>
+  <div class="row"><button id="homeEdit">Үй деректерін өзгерту</button><button id="homeDel">${armed==="h"+h.id?"Иә, үйді өшіру":"Үйді өшіру"}</button></div>`;
+}
+const numOf=el=>+String(el?.value||"").replace(/\D/g,"");
+function fmtInput(el,cb){el?.addEventListener("input",()=>{const v=numOf(el);el.value=v?v.toLocaleString("ru-RU").replace(/\s/g," "):"";cb&&cb()})}
+function bindHomes(){
+  $("#homeNew")?.addEventListener("click",()=>{homeForm={};note=null;render()});
+  document.querySelectorAll("[data-home]").forEach(b=>b.addEventListener("click",()=>{openHome=b.dataset.home;armed=null;note=null;render();scrollTo(0,0)}));
+  $("#homeBack")?.addEventListener("click",()=>{openHome=null;armed=null;note=null;render()});
+  $("#homeCancel")?.addEventListener("click",()=>{homeForm=null;note=null;render()});
+  $("#homeEdit")?.addEventListener("click",()=>{homeForm={id:openHome};note=null;render()});
+  const upd=()=>{const t=numOf($("#hTotal")),m=+$("#hMonths").value||0,p=numOf($("#hPaid"));$("#hCalc").textContent=t&&m?`Айлық төлем шамамен ${money(Math.ceil((t-p)/m))}`:""};
+  fmtInput($("#hTotal"),upd); fmtInput($("#hPaid"),upd); $("#hMonths")?.addEventListener("input",upd); if($("#hCalc"))upd();
+  fmtInput($("#hpAmt"));
+  $("#homeF")?.addEventListener("submit",async e=>{e.preventDefault();const btn=$("#homeBtn");busy(btn,true);note=null;
+    try{const id=await rpc("coop_home_save",{p_token:token,p_id:homeForm.id||null,p_title:$("#hTitle").value,p_buyer:$("#hBuyer").value,p_total:numOf($("#hTotal")),p_start:$("#hStart").value,p_months:+$("#hMonths").value,p_note:$("#hNote").value||null});
+      const pre=numOf($("#hPaid")); if(!homeForm.id&&pre>0)await rpc("coop_home_pay",{p_token:token,p_home:id,p_amount:pre,p_date:today(),p_note:"Бұған дейінгі төлемдер"});
+      homeForm=null;openHome=id;toast("Сақталды");await load();return}catch(err){note={err:err.message}} busy(btn,false);render()});
+  $("#hpF")?.addEventListener("submit",async e=>{e.preventDefault();const btn=$("#hpBtn");busy(btn,true);note=null;
+    try{await rpc("coop_home_pay",{p_token:token,p_home:openHome,p_amount:numOf($("#hpAmt")),p_date:$("#hpDate").value,p_note:$("#hpNote").value||null});toast("Төлем жазылды");await load();return}
+    catch(err){note={err:err.message}} busy(btn,false);render()});
+  const twoStep=(sel,key,run)=>document.querySelectorAll(sel).forEach(b=>b.addEventListener("click",async()=>{const k=key(b);
+    if(armed!==k){armed=k;render();return} armed=null;b.disabled=true;try{await run(b);await load()}catch(err){toast(err.message);render()}}));
+  twoStep("[data-hpdel]",b=>"p"+b.dataset.hpdel,b=>rpc("coop_home_pay_del",{p_token:token,p_id:b.dataset.hpdel}).then(()=>toast("Төлем өшірілді")));
+  twoStep("[data-ddel]",b=>"d"+b.dataset.ddel,async b=>{const r=await fn({action:"doc_delete",token,doc:b.dataset.ddel});if(!r.ok)throw new Error(r.msg);toast("Құжат өшірілді")});
+  twoStep("#homeDel",()=>"h"+openHome,async()=>{await rpc("coop_home_del",{p_token:token,p_id:openHome});openHome=null;toast("Үй өшірілді")});
+  document.querySelectorAll("[data-dopen]").forEach(b=>b.addEventListener("click",async()=>{
+    const w=window.open("about:blank","_blank"); b.disabled=true;
+    try{const r=await fn({action:"doc_open",token,doc:b.dataset.dopen});if(!r.ok)throw new Error(r.msg); if(w)w.location.href=r.url; else location.href=r.url}
+    catch(err){w&&w.close();toast(err.message)} b.disabled=false}));
+  $("#docIn")?.addEventListener("change",async e=>{const files=[...e.target.files];const msg=$("#docMsg");e.target.disabled=true;
+    try{for(const [i,f] of files.entries()){
+      if(f.size>20*1048576)throw new Error(`«${f.name}» 20 МБ-тан үлкен.`);
+      msg.textContent=`Жүктелуде ${i+1}/${files.length}: ${f.name}`;
+      const u=await fn({action:"doc_upload",token,home:openHome,name:f.name}); if(!u.ok)throw new Error(u.msg);
+      const r=await fetch(u.url,{method:"PUT",headers:{"Content-Type":f.type||"application/octet-stream"},body:f});
+      if(!r.ok)throw new Error(`«${f.name}» жүктелмеді.`);
+      await rpc("coop_home_doc_add",{p_token:token,p_home:openHome,p_name:f.name,p_path:u.path,p_size:f.size});
+    } toast("Құжат сақталды"); await load()}catch(err){msg.textContent=err.message||"Жүктеу сәтсіз";e.target.disabled=false}});
+}
 function renderAdmin(){
   const n1=adm.new_members.length,n2=adm.pending.length;
-  const tabs=`<div class="tabs"><button data-tab="home" class="${tab==="home"?"on":""}">Растау${n1+n2?`<span class="badge">${n1+n2}</span>`:""}</button><button data-tab="members" class="${tab==="members"?"on":""}">Салымшылар</button><button data-tab="top" class="${tab==="top"?"on":""}">Рейтинг</button></div>`;
+  const tabs=`<div class="tabs"><button data-tab="home" class="${tab==="home"?"on":""}">Растау${n1+n2?`<span class="badge">${n1+n2}</span>`:""}</button><button data-tab="homes" class="${tab==="homes"?"on":""}">Үйлер</button><button data-tab="members" class="${tab==="members"?"on":""}">Салымшылар</button><button data-tab="top" class="${tab==="top"?"on":""}">Рейтинг</button></div>`;
   let body="";
   if(tab==="home"){
     body=`<section class="card"><h2>Жаңа салымшылар</h2>${n1?`<div class="list">${adm.new_members.map(m=>`<div class="li"><div class="grow"><div class="name">${esc(m.full_name)}</div><div class="hint num">+${esc(m.phone)} · ${fmtD(m.created_at)}</div></div><button class="small pri" data-mok="${m.id}">Растау</button><button class="small" data-mno="${m.id}">Бас тарту</button></div>`).join("")}</div>`:`<div class="empty">Жаңа өтініш жоқ.</div>`}</section>
     ${ownerCard()}
     <section class="card"><h2>Салымды растау</h2><div class="hint">Ақша шотқа түскенін тексеріп барып растаңыз.</div>${n2?`<div class="list">${adm.pending.map(p=>`<div class="li"><div class="grow"><div class="name">${esc(p.full_name)}</div><div class="num" style="font-weight:600">${money(p.amount)}</div><div class="hint">${fmtD(p.paid_on)}${p.note?" · "+esc(p.note):""}</div></div><button class="small pri" data-pok="${p.id}">Түсті</button><button class="small" data-pno="${p.id}">Түспеді</button></div>`).join("")}</div>`:`<div class="empty">Расталмаған салым жоқ.</div>`}</section>`;
+  }else if(tab==="homes"){
+    body=renderHomes();
   }else if(tab==="members"){
     const list=adm.members.filter(m=>!m.is_admin);
     body=`<section class="card"><h2>Салымшылар · ${list.length}</h2>${list.length?`<div class="list">${list.map((m,i)=>`<div class="li"><span class="place">${i+1}</span><div class="grow"><div class="name">${esc(m.full_name)}</div><div class="hint num">+${esc(m.phone)}</div></div><div style="text-align:right"><b class="num">${m.points} балл</b><div class="hint num">${money(m.total)}</div></div></div>`).join("")}</div>`:`<div class="empty">Әзірге расталған салымшы жоқ. Мұғалімдерге сайт сілтемесін жіберіңіз.</div>`}</section>`;
@@ -249,7 +356,7 @@ function renderAdmin(){
     body=`<section class="card"><h2>Мұғалімдер көретін үздік 10</h2>${topList(me.top)}</section>${RULES}`;
   }
   return `${head(`<button class="small" id="out">Шығу</button>`)}
-  <section class="vault"><div class="eyebrow">Қорда жиналды · қор иесі</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы · бір үйге дейін ${money(Math.max(0,25000000-me.fund))}</div></section>
+  <section class="vault"><div class="eyebrow">Қорда жиналды · қор иесі</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы · оның ішінде үйлерден қайтқаны ${money(me.repaid)}</div></section>
   ${noteHtml()}${faceCard()}${tabs}${body}`;
 }
 
@@ -259,6 +366,7 @@ function render(){
   bind();
 }
 function bind(){
+  bindHomes();
   $("#swap")?.addEventListener("click",()=>{view=view==="register"?"login":"register";note=null;render()});
   $("#faceBtn")?.addEventListener("click",e=>faceLogin(e.currentTarget));
   $("#faceAdd")?.addEventListener("click",e=>faceAdd(e.currentTarget));
