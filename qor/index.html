@@ -276,7 +276,7 @@ function houseSVG(lv){
 const lvChip=b=>{const l=levelOf(b);return l?`<span class="lv lv${l.c}">${l.t}</span>`:""};
 const tipToday=()=>{const d=new Date(),s=new Date(d.getFullYear(),0,0);return TIPS[Math.floor((d-s)/864e5)%TIPS.length]};
 let giving=false, sent=null;
-const waLink=(amount,date)=>{const t=`Ассалаумағалейкум! Баспана қорына үлес қостым.\nАты-жөні: ${me.name}\nСомасы: ${money(amount)}\nКүні: ${fmtD(date)}\nКвитанцияны осы хатқа жіберемін.`;
+const waLink=(amount,date)=>{const t=`Қайырлы күн! Баспана қорына үлес қостым.\nАты-жөні: ${me.name}\nСомасы: ${money(amount)}\nКүні: ${fmtD(date)}\nКвитанцияны осы хатқа жіберемін.`;
   return `https://wa.me/${String(me.owner_wa||"").replace(/\D/g,"")}?text=${encodeURIComponent(t)}`};
 function payInfoBlock(){
   const t=me.pay_info;
