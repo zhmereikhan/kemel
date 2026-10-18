@@ -176,7 +176,7 @@ const RULES=`<section class="card"><h2>Ереже қысқаша</h2><ol class="
 function renderLogin(reg){
   const face=canFace&&!reg?`<button class="gold" id="faceBtn">Face ID-мен кіру</button>`:"";
   return `${head()}
-  <section class="vault"><div class="eyebrow">Ортақ мақсат</div><div class="big">Үй — бірге жинасақ</div><div class="sub">Өз салымың мен кезектегі орныңды осы жерден көресің.</div></section>
+  <section class="vault"><div class="eyebrow">Ортақ мақсат</div><div class="big" style="font-size:clamp(24px,7vw,32px);text-wrap:balance">Үй — тыныштық мекені,<br>баспана — бақыт мекені</div><div class="sub">Өз салымың мен кезектегі орныңды осы жерден көресің.</div></section>
   <section class="card"><h2>${reg?"Тіркелу":"Кіру"}</h2>${noteHtml()}
    <form id="authF" class="card" style="border:none;padding:0">
     ${reg?`<label for="fName">Аты-жөні<input id="fName" autocomplete="name" placeholder="Мысалы, Айгүл Серікова" required></label>`:""}
