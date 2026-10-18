@@ -85,6 +85,8 @@ button:disabled{opacity:.55;cursor:wait}
 .you{font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.06em}
 .rt>.n{text-align:right;font-variant-numeric:tabular-nums}
 .rt .who{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;min-width:0}
+.btn-wa{display:block;text-align:center;text-decoration:none;font-weight:600;border-radius:10px;padding:13px 14px;background:#1f8f4e;color:#fff}
+.small-wa{font-size:13px;font-weight:600;padding:7px 10px;border-radius:10px;background:var(--ok-soft);color:var(--ok);text-decoration:none;white-space:nowrap}
 .msg{padding:10px 12px;border-radius:10px;font-size:14px}
 .msg.err{background:var(--bad-soft);color:var(--bad)} .msg.ok{background:var(--ok-soft);color:var(--ok)}
 .tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
@@ -273,7 +275,9 @@ function houseSVG(lv){
 }
 const lvChip=b=>{const l=levelOf(b);return l?`<span class="lv lv${l.c}">${l.t}</span>`:""};
 const tipToday=()=>{const d=new Date(),s=new Date(d.getFullYear(),0,0);return TIPS[Math.floor((d-s)/864e5)%TIPS.length]};
-let giving=false;
+let giving=false, sent=null;
+const waLink=(amount,date)=>{const t=`Ассалаумағалейкум! Баспана қорына үлес қостым.\nАты-жөні: ${me.name}\nСомасы: ${money(amount)}\nКүні: ${fmtD(date)}\nКвитанцияны осы хатқа жіберемін.`;
+  return `https://wa.me/${String(me.owner_wa||"").replace(/\D/g,"")}?text=${encodeURIComponent(t)}`};
 function payInfoBlock(){
   const t=me.pay_info;
   if(!t)return `<div class="hint">Қор иесі аударым деректерін әлі жазбаған. Ақшаны қалай беретініңді онымен келіс.</div>`;
@@ -298,6 +302,10 @@ function renderMember(tabsHtml=""){
    ${me.fund>0?`<div class="bar" style="display:flex"><i style="width:${me.owner_total/me.fund*100}%;border-radius:0"></i><i style="width:${me.teachers_total/me.fund*100}%;background:var(--ok);border-radius:0"></i></div>
    <div class="row hint" style="gap:14px"><span style="flex:0 0 auto"><span style="color:var(--gold)">●</span> Қор иесі</span><span style="flex:0 0 auto"><span style="color:var(--ok)">●</span> ${GN[me.grp]}</span></div>`:""}
    <div class="hint">${me.grp==="biz"?"Кәсіпкерлердің":"Ұстаздардың"} әрқайсысы қанша салғаны көрсетілмейді, тек жалпы сомасы.</div></section>
+  ${sent&&!A?`<section class="card" style="border-color:var(--ok)"><h2>Үлесіңіз жіберілді</h2>
+   <div class="hint">Соңғы қадам: квитанцияны қор иесіне WhatsApp арқылы жіберіңіз. Хаттағы аты-жөніңіз бен сома өзі толтырылады, тек квитанцияның суретін тіркейсіз.</div>
+   ${me.owner_wa?`<a class="btn-wa" href="${waLink(sent.amount,sent.date)}" target="_blank" rel="noopener">WhatsApp-қа квитанция жіберу</a>`:`<div class="hint">Қор иесі WhatsApp нөмірін әлі қоймаған.</div>`}
+   <button class="link" id="sentClose" type="button">Жабу</button></section>`:""}
   ${giving?`<section class="card"><h2>Үлес қосу</h2>${A?`<div class="hint">Сенің салымың бірден расталады${me.grp==="biz"?" және рейтингте балл болып есептеледі":""}. Осы қорға барлығы салғаның: <b class="num">${money(own)}</b></div>`:payInfoBlock()}
    <form id="payF" class="card" style="border:none;padding:0">
     <div class="row"><label for="pAmt">Аударған сомаңыз, ₸<input id="pAmt" inputmode="numeric" placeholder="50 000" required></label>
@@ -326,12 +334,15 @@ function renderMember(tabsHtml=""){
   <section class="card"><h2>Рейтинг</h2><div class="hint">Тек балл көрсетіледі. Кім қанша салғанын ешкім көрмейді.</div>${topList(me.top)}</section>
   <section class="card"><h2>Үй салу кезеңдері</h2><div class="hint">Ай сайын кемінде ${money(me.smin)} үзбей салсаң, үйің кезең-кезеңімен бой көтереді. Бір рет салынған кезең бұзылмайды, ақша қайтарып алса да сақталады.</div>
    <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow"><span class="lv lv${LEVELS.find(x=>x[1]===t)[2]}">${t}</span></span><span class="hint">${n} ай үзбей</span>${P&&best>=n?`<span class="pill ok">Салынды</span>`:""}</div>`).join("")}</div></section>
-  ${!P?"":`<section class="card"><h2>Менің салымдарым</h2>${(me.withdrawals||[]).length?`<div class="list" style="margin-bottom:6px">${me.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><span class="pill no">Қайтарылды</span></div>`).join("")}</div>`:""}${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. «Үлес қосу» батырмасын басыңыз.</div>`}</section>`}
+  ${!P?"":`<section class="card"><h2>Менің салымдарым</h2>${(me.withdrawals||[]).length?`<div class="list" style="margin-bottom:6px">${me.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><span class="pill no">Қайтарылды</span></div>`).join("")}</div>`:""}${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`${me.owner_wa?`<a class="small-wa" href="${waLink(h.amount,h.paid_on)}" target="_blank" rel="noopener" aria-label="Квитанцияны WhatsApp-қа жіберу">WhatsApp</a>`:""}<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. «Үлес қосу» батырмасын басыңыз.</div>`}</section>`}
   ${rules()}`;
 }
 function payInfoCard(){
   return `<section class="card"><h2>Аударым деректері</h2><div class="hint">Салымшылар «Үлес қосу» басқанда осыны көреді. Мысалы: Kaspi Gold +7 7xx xxx xx xx, Аты-жөні.</div>
-   <textarea id="piText" rows="3" maxlength="500">${esc(me.pay_info||"")}</textarea><button class="small pri" id="piSave" style="justify-self:start">Сақтау</button></section>`;
+   <textarea id="piText" rows="3" maxlength="500">${esc(me.pay_info||"")}</textarea>
+   <label for="waIn">Квитанция қабылдайтын WhatsApp нөмірі<input id="waIn" type="tel" inputmode="tel" placeholder="${esc(me.owner_wa?"+"+me.owner_wa:"8 701 123 45 67")}" value="${esc(me.wa_custom?"+"+me.wa_custom:"")}"></label>
+   <div class="hint">Бос қалдырсаң, сенің тіркелген нөміріңе (+${esc(me.owner_wa||"")}) барады.</div>
+   <button class="small pri" id="piSave" style="justify-self:start">Сақтау</button></section>`;
 }
 function ownerCard(){
   const own=(adm.members.find(m=>m.is_admin)||{}).total||0;
@@ -509,7 +520,8 @@ function bind(){
     try{await rpc("coop_withdraw_del",{p_token:token,p_id:b.dataset.wdel});toast("Өшірілді");await load()}catch(err){toast(err.message)}}));
   $("#giveBtn")?.addEventListener("click",()=>{giving=!giving;note=null;render();if(giving)setTimeout(()=>$("#pAmt")?.focus(),50)});
   $("#copyPay")?.addEventListener("click",async e=>{const t=me.pay_info||"";try{await navigator.clipboard.writeText(t);toast("Көшірілді")}catch{const r=document.createRange();r.selectNodeContents($("#payInfo"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Белгіленді, көшіріп алыңыз")}});
-  $("#piSave")?.addEventListener("click",async e=>{busy(e.currentTarget,true);try{await rpc("coop_set_payinfo",{p_token:token,p_text:$("#piText").value});toast("Сақталды");await load()}catch(err){toast(err.message);busy(e.currentTarget,false)}});
+  $("#sentClose")?.addEventListener("click",()=>{sent=null;render()});
+  $("#piSave")?.addEventListener("click",async e=>{busy(e.currentTarget,true);try{await rpc("coop_set_payinfo",{p_token:token,p_text:$("#piText").value});await rpc("coop_set_wa",{p_token:token,p_phone:$("#waIn").value});toast("Сақталды");await load()}catch(err){toast(err.message);busy(e.currentTarget,false)}});
   $("#swap")?.addEventListener("click",()=>{view=view==="register"?"login":"register";note=null;render()});
   $("#faceBtn")?.addEventListener("click",e=>faceLogin(e.currentTarget));
   $("#faceAdd")?.addEventListener("click",e=>faceAdd(e.currentTarget));
@@ -540,7 +552,8 @@ function bind(){
   $("#payF")?.addEventListener("submit",async e=>{
     e.preventDefault(); const btn=$("#payBtn"); busy(btn,true); note=null;
     try{ await rpc("coop_add2",{p_token:token,p_amount:+amt.value.replace(/\D/g,""),p_date:$("#pDate").value,p_note:$("#pNote").value||null,p_grp:viewGrp});
-      toast(me.is_admin?"Қорға қосылды":"Жіберілді. Қор иесі растағанын күтіңіз"); giving=false; await load(); return }
+      if(!me.is_admin)sent={amount:+amt.value.replace(/\D/g,""),date:$("#pDate").value};
+      toast(me.is_admin?"Қорға қосылды":"Жіберілді. Енді квитанцияны WhatsApp-қа жіберіңіз"); giving=false; await load(); return }
     catch(err){ note={err:err.message} } busy(btn,false); render();
   });
   document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;note=null;render()}));
