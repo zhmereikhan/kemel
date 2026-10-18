@@ -81,6 +81,8 @@ button:disabled{opacity:.55;cursor:wait}
 .house{width:100%;max-width:260px;height:auto;justify-self:center;display:block}
 .rt{display:grid;grid-template-columns:28px minmax(0,1fr) 52px 48px 52px;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
 .rt.hd{border-top:none;padding:0 0 4px;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.rt.me-row{padding-inline:10px;margin-inline:-10px}
+.you{font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.06em}
 .rt>.n{text-align:right;font-variant-numeric:tabular-nums}
 .rt .who{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;min-width:0}
 .msg{padding:10px 12px;border-radius:10px;font-size:14px}
@@ -108,6 +110,7 @@ const ERR={PHONE:"Телефон нөмірін толық жазыңыз, мы�
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const GN={teacher:"Ұстаздар",biz:"Кәсіпкерлер"}, G1={teacher:"Ұстаз",biz:"Кәсіпкер"};
+const shortName=n=>{const p=String(n||"").trim().split(/\s+/);return p.length>1?`${p[0]} ${p[1][0].toUpperCase()}.`:p[0]||""};
 const pts=n=>(+n||0).toLocaleString("ru-RU",{maximumFractionDigits:1});
 const money=n=>Math.round(+n||0).toLocaleString("ru-RU").replace(/\s/g," ")+" ₸";
 const fmtD=d=>{const x=new Date(d);return isNaN(x)?"":x.toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric"})};
@@ -211,7 +214,7 @@ function renderLogin(reg){
 }
 function topList(rows){
   if(!rows.length)return `<div class="empty">Әзірге расталған салым жоқ. Бірінші салым түскенде рейтинг осы жерде пайда болады.</div>`;
-  return `<div><div class="rt hd"><span></span><span>Аты</span><span class="n">Негізгі</span><span class="n">Бонус</span><span class="n">Барлығы</span></div>${rows.map((r,i)=>`<div class="rt ${r.me?"me-row":""}"><span class="place ${i===0?"p1":""}">${i+1}</span><span class="who"><span class="name">${esc(r.name)}${r.me?" · сіз":""}</span>${lvChip(r.best)}</span><span class="n">${pts(r.points-r.bonus)}</span><span class="n">${r.bonus?"+"+pts(r.bonus):"—"}</span><b class="n">${pts(r.points)}</b></div>`).join("")}</div>`;
+  return `<div><div class="rt hd"><span></span><span>Аты</span><span class="n">Негізгі</span><span class="n">Бонус</span><span class="n">Барлығы</span></div>${rows.map((r,i)=>`<div class="rt ${r.me?"me-row":""}"><span class="place ${i===0?"p1":""}">${i+1}</span><span class="who"><span class="name">${esc(shortName(r.name))}</span>${r.me?`<span class="you">сіз</span>`:""}${lvChip(r.best)}</span><span class="n">${pts(r.points-r.bonus)}</span><span class="n">${r.bonus?"+"+pts(r.bonus):"—"}</span><b class="n">${pts(r.points)}</b></div>`).join("")}</div>`;
 }
 const pill=s=>s==="confirmed"?`<span class="pill ok">Расталды</span>`:s==="pending"?`<span class="pill wait">Күтуде</span>`:`<span class="pill no">Қабылданбады</span>`;
 function faceCard(){
