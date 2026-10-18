@@ -303,7 +303,7 @@ function renderMember(tabsHtml=""){
    <div class="row hint" style="gap:14px"><span style="flex:0 0 auto"><span style="color:var(--gold)">●</span> Қор иесі</span><span style="flex:0 0 auto"><span style="color:var(--ok)">●</span> ${GN[me.grp]}</span></div>`:""}
    <div class="hint">${me.grp==="biz"?"Кәсіпкерлердің":"Ұстаздардың"} әрқайсысы қанша салғаны көрсетілмейді, тек жалпы сомасы.</div></section>
   ${sent&&!A?`<section class="card" style="border-color:var(--ok)"><h2>Үлесіңіз жіберілді</h2>
-   <div class="hint">Соңғы қадам: квитанцияны қор иесіне WhatsApp арқылы жіберіңіз. Хаттағы аты-жөніңіз бен сома өзі толтырылады, тек квитанцияның суретін тіркейсіз.</div>
+   <div class="hint">WhatsApp ашылмаса немесе квитанцияны жібермей қалсаңыз, төмендегі батырманы басыңыз.</div>
    ${me.owner_wa?`<a class="btn-wa" href="${waLink(sent.amount,sent.date)}" target="_blank" rel="noopener">WhatsApp-қа квитанция жіберу</a>`:`<div class="hint">Қор иесі WhatsApp нөмірін әлі қоймаған.</div>`}
    <button class="link" id="sentClose" type="button">Жабу</button></section>`:""}
   ${giving?`<section class="card"><h2>Үлес қосу</h2>${A?`<div class="hint">Сенің салымың бірден расталады${me.grp==="biz"?" және рейтингте балл болып есептеледі":""}. Осы қорға барлығы салғаның: <b class="num">${money(own)}</b></div>`:payInfoBlock()}
@@ -312,8 +312,8 @@ function renderMember(tabsHtml=""){
     <label for="pDate">Күні<input id="pDate" type="date" value="${today()}" max="${today()}" required></label></div>
     <label for="pNote">Ескерту (міндетті емес)<input id="pNote" maxlength="200" placeholder="Kaspi, Halyk, қолма-қол…"></label>
     <div class="hint" id="pPts">${money(me.rate)} = 1 балл</div>
-    <button class="pri" type="submit" id="payBtn">${A?"Қорға қосу":"Аудардым, растауға жіберу"}</button>
-    ${A?"":`<div class="hint">Қор иесі ақша түскенін көрген соң растайды. Сосын ғана сомаға және балға қосылады.</div>`}
+    <button class="pri" type="submit" id="payBtn">${A?"Қорға қосу":me.owner_wa?"Аудардым — WhatsApp-қа квитанция жіберу":"Аудардым, растауға жіберу"}</button>
+    ${A?"":`<div class="hint">${me.owner_wa?"Батырманы басқанда WhatsApp ашылады, хат өзі толтырылады. Квитанцияның суретін тіркеп, жіберіңіз. ":""}Қор иесі ақша түскенін көрген соң растайды, сосын сомаға және балға қосылады.</div>`}
    </form></section>`:""}
   ${noteHtml()}
   ${!P?"":`<section class="card"><div class="row" style="justify-content:space-between"><div class="eyebrow" style="flex:1 1 auto">${esc(me.name)}</div>${lvChip(best)}</div>
@@ -552,7 +552,8 @@ function bind(){
   $("#payF")?.addEventListener("submit",async e=>{
     e.preventDefault(); const btn=$("#payBtn"); busy(btn,true); note=null;
     try{ await rpc("coop_add2",{p_token:token,p_amount:+amt.value.replace(/\D/g,""),p_date:$("#pDate").value,p_note:$("#pNote").value||null,p_grp:viewGrp});
-      if(!me.is_admin)sent={amount:+amt.value.replace(/\D/g,""),date:$("#pDate").value};
+      if(!me.is_admin){sent={amount:+amt.value.replace(/\D/g,""),date:$("#pDate").value};
+        if(me.owner_wa){const link=waLink(sent.amount,sent.date);giving=false;render();location.href=link;load();return}}
       toast(me.is_admin?"Қорға қосылды":"Жіберілді. Енді квитанцияны WhatsApp-қа жіберіңіз"); giving=false; await load(); return }
     catch(err){ note={err:err.message} } busy(btn,false); render();
   });
