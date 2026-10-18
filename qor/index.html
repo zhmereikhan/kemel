@@ -104,15 +104,16 @@ const KEY="sb_publishable_2v6DTUcUYh4vPeH0_PHfSg_gZ0xx4i_";
 const ERR={PHONE:"Телефон нөмірін толық жазыңыз, мысалы 8 701 123 45 67.",PIN:"Құпиясөз кемінде 6 таңбадан тұрсын.",NAME:"Аты-жөніңізді толық жазыңыз.",
  EXISTS:"Бұл нөмір тіркеліп қойған. «Кіру» бөлімін қолданыңыз.",BUSY:"Растауды күтіп тұрған өтініш тым көп. Кейінірек қайталаңыз.",
  BAD:"Нөмір немесе құпиясөз қате.",LOCKED:"5 рет қате терілді. 15 минуттан соң қайталаңыз.",AUTH:"Қайта кіріңіз.",
- AMOUNT:"Соманы жазыңыз (кемінде 1 000 ₸).",DATE:"Күні дұрыс емес. Соңғы 90 күн ішіндегі күнді таңдаңыз.",TOO_MANY:"Расталмаған 10 жазба тұр. Растауды күтіңіз.",ADMIN:"Бұл тек қор иесіне.",MONTHS:"Мерзімді 1–360 ай аралығында жазыңыз.",PATH:"Файл жолы қате.",OVER:"Бұл сома оның қордағы ақшасынан көп."};
+ AMOUNT:"Соманы жазыңыз (кемінде 1 000 ₸).",DATE:"Күні дұрыс емес. Соңғы 90 күн ішіндегі күнді таңдаңыз.",TOO_MANY:"Расталмаған 10 жазба тұр. Растауды күтіңіз.",ADMIN:"Бұл тек қор иесіне.",MONTHS:"Мерзімді 1–360 ай аралығында жазыңыз.",PATH:"Файл жолы қате.",OVER:"Бұл сома оның қордағы ақшасынан көп.",GRP:"Топ дұрыс таңдалмаған."};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const GN={teacher:"Ұстаздар",biz:"Кәсіпкерлер"}, G1={teacher:"Ұстаз",biz:"Кәсіпкер"};
 const pts=n=>(+n||0).toLocaleString("ru-RU",{maximumFractionDigits:1});
 const money=n=>Math.round(+n||0).toLocaleString("ru-RU").replace(/\s/g," ")+" ₸";
 const fmtD=d=>{const x=new Date(d);return isNaN(x)?"":x.toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric"})};
 const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
 const store={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch{}}};
-let openMember=null;
+let regGrp="teacher", openMember=null, viewGrp=(()=>{try{return localStorage.getItem("qor_grp")||"teacher"}catch{return "teacher"}})();
 let homes=[], openHome=null, homeForm=null, armed=null;
 let token=store.get("qor_token"), me=null, adm=null, view="login", tab="main", note=null;
 const canFace=!!(window.PublicKeyCredential&&navigator.credentials);
@@ -171,24 +172,24 @@ async function faceLogin(btn){
 
 async function load(){
   if(!token){view="login";render();return}
-  try{ me=await rpc("coop_me",{p_token:token}); adm=me.is_admin?await rpc("coop_admin",{p_token:token}):null; homes=me.is_admin?await rpc("coop_homes_list",{p_token:token}):[]; view="home" }
+  try{ me=await rpc("coop_me2",{p_token:token,p_grp:viewGrp}); adm=me.is_admin?await rpc("coop_admin",{p_token:token}):null; homes=me.is_admin?await rpc("coop_homes_list",{p_token:token}):[]; view="home" }
   catch(e){ if(!token)view="login"; else note={err:e.message} }
   render();
 }
 function logout(silent){ if(token&&!silent)rpc("coop_logout",{p_token:token}).catch(()=>{}); token=null;me=null;adm=null;store.set("qor_token",null);view="login";if(!silent)render() }
 
 const LOGO=`<div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#c9932e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 11 12 4l9 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg></div>`;
-const head=(right="")=>`<div class="top"><div class="brand">${LOGO}<div><h1>Баспана қоры</h1><div class="hint">Мұғалімдерге үй жинағы</div></div></div>${right}</div>`;
+const head=(right="")=>`<div class="top"><div class="brand">${LOGO}<div><h1>Баспана қоры</h1><div class="hint">${!me?"Бірге жинап, үй аламыз":me.grp==="biz"?"Кәсіпкерлерге үй жинағы":"Мұғалімдерге үй жинағы"}</div></div></div>${right}</div>`;
 const noteHtml=()=>note?`<div class="msg ${note.err?"err":"ok"}">${esc(note.err||note.ok)}</div>`:"";
-const RULES=`<section class="card"><h2>Ереже қысқаша</h2><ol class="rules">
-<li>Әр 10 000 ₸ салым үшін 1 балл беріледі. Аз салсаң да есептеледі: 2 000 ₸ = 0,2 балл, 15 000 ₸ = 1,5 балл.</li>
-<li>Бір айда ең көбі 25 балл жинауға болады, артық салым балл қоспайды.</li>
-<li>Ай сайын кемінде 10 000 ₸ салып, 3 ай үзбесең +2 бонус балл қосылады.</li>
+const rules=()=>{const r=me.rate,c=me.cap,sm=me.smin,bs=me.bstep;return `<section class="card"><h2>Ереже қысқаша</h2><ol class="rules">
+<li>Әр ${money(r)} салым үшін 1 балл беріледі. Аз салсаң да есептеледі: ${money(r/5)} = 0,2 балл, ${money(r*1.5)} = 1,5 балл.</li>
+<li>Бір айда ең көбі ${pts(c)} балл жинауға болады (${money(r*c)}), артық салым балл қоспайды.</li>
+<li>Ай сайын кемінде ${money(sm)} салып, 3 ай үзбесең +${pts(bs)} бонус балл қосылады.</li>
 <li>Салым қор иесі растағаннан кейін ғана сомаға және балға қосылады.</li>
 <li>Әр салымға қор иесі қарыз қолхатын береді.</li>
 <li>Үй кезегін комиссия балл, жағдай және өтіл бойынша шешеді.</li>
 <li>Шыққысы келген адамға салымы 1 айдан кешіктірмей қайтарылады.</li>
-<li>Салымның бір бөлігін қайтарып алса, барлық балл (бонус балды қоса) сол үлеске қарай азаяды. Мысалы, жартысын алса — балдың жартысы қалады. Толық алса — балл 0 болады.</li></ol></section>`;
+<li>Салымның бір бөлігін қайтарып алса, барлық балл (бонус балды қоса) сол үлеске қарай азаяды. Мысалы, жартысын алса — балдың жартысы қалады. Толық алса — балл 0 болады.</li></ol></section>`};
 
 function renderLogin(reg){
   const face=canFace&&!reg?`<button class="gold" id="faceBtn">Face ID-мен кіру</button>`:"";
@@ -196,6 +197,7 @@ function renderLogin(reg){
   <section class="vault"><div class="eyebrow">Ортақ мақсат</div><div class="big" style="font-size:clamp(24px,7vw,32px);text-wrap:balance">Адал жинақ —<br>берекелі шаңырақ</div><div class="sub">Өз салымың мен кезектегі орныңды осы жерден көресің.</div></section>
   <section class="card"><h2>${reg?"Тіркелу":"Кіру"}</h2>${noteHtml()}
    <form id="authF" class="card" style="border:none;padding:0">
+    ${reg?`<div class="tabs" role="radiogroup" aria-label="Кім ретінде тіркелесіз"><button type="button" data-rg="teacher" class="${regGrp==="teacher"?"on":""}">Ұстаз</button><button type="button" data-rg="biz" class="${regGrp==="biz"?"on":""}">Кәсіпкер</button></div>`:""}
     ${reg?`<label for="fName">Аты-жөні<input id="fName" autocomplete="name" placeholder="Мысалы, Айгүл Серікова" required></label>`:""}
     <label for="fPhone">Телефон нөмірі<input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="8 701 123 45 67" required></label>
     <label for="fPin">Құпиясөз<input id="fPin" type="password" autocomplete="${reg?"new-password":"current-password"}" minlength="6" required></label>
@@ -230,7 +232,7 @@ const TIPS=[
  "Мақсатыңды көзге көрінетін жерге іл: «Өз үйім — 20__ жыл». Көзге көрінген мақсат ұмытылмайды.",
  "Ұсақ шығындар — үлкен шығын. Күнделікті кофе, такси, тәттілерді бір ай есептеп көр.",
  "Отбасыңмен бірге жина: балаларға да мақсатты айт. Ортақ мақсат отбасын біріктіреді.",
- "«Аз да болса, үзбей» — қорда 3 ай үзбей салсаң, +2 бонус балл аласың.",
+ "«Аз да болса, үзбей» — қорда 3 ай үзбей салсаң, бонус балл аласың.",
  "Жеңілдік (скидка) — үнем емес, егер ол затты алмақ болмасаң.",
  "Коммуналдық төлемдерді уақытында төле. Өсімпұл — бос кеткен ақша.",
  "Ақшаны бөлек шотқа ұста: күнделікті шығын бір карта, жинақ басқа карта.",
@@ -281,25 +283,25 @@ function renderMember(tabsHtml=""){
   const mp=me.month_points||0, st=me.streak||0, best=me.best||0, lv=levelOf(best);
   const toBonus=3-(st%3);
   return `${head(`<button class="small" id="out">Шығу</button>`)}
-  <section class="vault"><div class="eyebrow">Үйге жиналды${A?" · қор иесі":""}</div><div class="big num">${money(me.fund)}</div>
+  <section class="vault"><div class="eyebrow">Үйге жиналды${A?` · ${GN[me.grp]} қоры`:""}</div><div class="big num">${money(me.fund)}</div>
    <div class="sub">${me.members} салымшы · Адал жинақ — берекелі шаңырақ</div>
    <button class="gold" id="giveBtn" style="margin-top:10px;justify-self:start;position:relative;z-index:1">${giving?"Жабу":"Үлес қосу"}</button></section>
   ${tabsHtml}
   <section class="card"><h2>Қор неден құралды</h2>
    <div class="list">
     <div class="li"><span class="grow name">Қор иесінің үлесі</span><b class="num">${money(me.owner_total)}</b></div>
-    <div class="li"><span class="grow name">Ұстаздардың үлесі</span><b class="num">${money(me.teachers_total)}</b></div>
+    <div class="li"><span class="grow name">${me.grp==="biz"?"Кәсіпкерлердің":"Ұстаздардың"} үлесі</span><b class="num">${money(me.teachers_total)}</b></div>
     ${me.repaid?`<div class="li"><span class="grow name">Үй алғандардың қайтарғаны</span><b class="num">${money(me.repaid)}</b></div>`:""}
    </div>
    ${me.fund>0?`<div class="bar" style="display:flex"><i style="width:${me.owner_total/me.fund*100}%;border-radius:0"></i><i style="width:${me.teachers_total/me.fund*100}%;background:var(--ok);border-radius:0"></i><i style="width:${me.repaid/me.fund*100}%;background:var(--h-roof);border-radius:0"></i></div>
-   <div class="row hint" style="gap:14px"><span style="flex:0 0 auto"><span style="color:var(--gold)">●</span> Қор иесі</span><span style="flex:0 0 auto"><span style="color:var(--ok)">●</span> Ұстаздар</span>${me.repaid?`<span style="flex:0 0 auto"><span style="color:var(--h-roof)">●</span> Қайтарылғаны</span>`:""}</div>`:""}
-   <div class="hint">Ұстаздардың әрқайсысы қанша салғаны көрсетілмейді, тек жалпы сомасы.</div></section>
+   <div class="row hint" style="gap:14px"><span style="flex:0 0 auto"><span style="color:var(--gold)">●</span> Қор иесі</span><span style="flex:0 0 auto"><span style="color:var(--ok)">●</span> ${GN[me.grp]}</span>${me.repaid?`<span style="flex:0 0 auto"><span style="color:var(--h-roof)">●</span> Қайтарылғаны</span>`:""}</div>`:""}
+   <div class="hint">${me.grp==="biz"?"Кәсіпкерлердің":"Ұстаздардың"} әрқайсысы қанша салғаны көрсетілмейді, тек жалпы сомасы.</div></section>
   ${giving?`<section class="card"><h2>Үлес қосу</h2>${A?`<div class="hint">Сенің салымың бірден расталады. Барлығы салғаның: <b class="num">${money(own)}</b></div>`:payInfoBlock()}
    <form id="payF" class="card" style="border:none;padding:0">
     <div class="row"><label for="pAmt">Аударған сомаңыз, ₸<input id="pAmt" inputmode="numeric" placeholder="50 000" required></label>
     <label for="pDate">Күні<input id="pDate" type="date" value="${today()}" max="${today()}" required></label></div>
     <label for="pNote">Ескерту (міндетті емес)<input id="pNote" maxlength="200" placeholder="Kaspi, Halyk, қолма-қол…"></label>
-    <div class="hint" id="pPts">10 000 ₸ = 1 балл</div>
+    <div class="hint" id="pPts">${money(me.rate)} = 1 балл</div>
     <button class="pri" type="submit" id="payBtn">${A?"Қорға қосу":"Аудардым, растауға жіберу"}</button>
     ${A?"":`<div class="hint">Қор иесі ақша түскенін көрген соң растайды. Сосын ғана сомаға және балға қосылады.</div>`}
    </form></section>`:""}
@@ -309,9 +311,9 @@ function renderMember(tabsHtml=""){
     <div class="stat"><b class="num">${me.rank||"—"}<small style="font-size:14px;color:var(--mute)"> / ${me.members}</small></b><span>рейтингтегі орын</span></div>
 </div>
    <div class="row hint" style="justify-content:space-between"><span>Барлығы <b class="num" style="color:var(--ink)">${pts(me.points)} балл</b></span><span>Үзбей <b class="num" style="color:var(--ink)">${st} ай</b></span></div>
-   <div><div class="row" style="justify-content:space-between"><span class="hint">Осы айдың балы</span><b class="num">${pts(mp)} / 25</b></div><div class="bar"><i style="width:${Math.min(100,mp/25*100)}%"></i></div></div>
-   <div><div class="row" style="justify-content:space-between"><span class="hint">Келесі +2 бонусқа дейін</span><b class="num">${3-toBonus} / 3 ай</b></div><div class="bar"><i style="width:${(3-toBonus)/3*100}%;background:var(--ok)"></i></div></div>
-   <div class="hint">${st?`Үзбей ${st} ай салып келесің. Тағы ${toBonus} ай үзбесең, +2 бонус балл.`:`Ай сайын кемінде 10 000 ₸ салып, 3 ай үзбесең +2 бонус балл аласың.`}${mp>=25?" Осы айдың шегіне жеттің.":""}</div>
+   <div><div class="row" style="justify-content:space-between"><span class="hint">Осы айдың балы</span><b class="num">${pts(mp)} / ${pts(me.cap)}</b></div><div class="bar"><i style="width:${Math.min(100,mp/me.cap*100)}%"></i></div></div>
+   <div><div class="row" style="justify-content:space-between"><span class="hint">Келесі +${pts(me.bstep)} бонусқа дейін</span><b class="num">${3-toBonus} / 3 ай</b></div><div class="bar"><i style="width:${(3-toBonus)/3*100}%;background:var(--ok)"></i></div></div>
+   <div class="hint">${st?`Үзбей ${st} ай салып келесің. Тағы ${toBonus} ай үзбесең, +${pts(me.bstep)} бонус балл.`:`Ай сайын кемінде ${money(me.smin)} салып, 3 ай үзбесең +${pts(me.bstep)} бонус балл аласың.`}${mp>=me.cap?" Осы айдың шегіне жеттің.":""}</div>
   </section>`}
   ${A?"":(()=>{const l=levelOf(best), c=l?l.c:0, nx=[...LEVELS].reverse().find(x=>x[0]>best);
     return `<section class="card"><div class="row" style="justify-content:space-between"><h2 style="flex:1 1 auto">Менің үйім</h2><span class="hint" style="flex:0 0 auto">${c} / 6 кезең</span></div>
@@ -320,10 +322,10 @@ function renderMember(tabsHtml=""){
   <section class="card" style="background:var(--gold-soft);border-color:transparent"><div class="eyebrow">Күннің кеңесі</div><div style="font-size:16px">${esc(tipToday())}</div></section>
   ${A?"":faceCard()}
   <section class="card"><h2>Рейтинг</h2><div class="hint">Тек балл көрсетіледі. Кім қанша салғанын ешкім көрмейді.</div>${topList(me.top)}</section>
-  <section class="card"><h2>Үй салу кезеңдері</h2><div class="hint">Ай сайын кемінде 10 000 ₸ үзбей салсаң, үйің кезең-кезеңімен бой көтереді. Бір рет салынған кезең бұзылмайды, ақша қайтарып алса да сақталады.</div>
+  <section class="card"><h2>Үй салу кезеңдері</h2><div class="hint">Ай сайын кемінде ${money(me.smin)} үзбей салсаң, үйің кезең-кезеңімен бой көтереді. Бір рет салынған кезең бұзылмайды, ақша қайтарып алса да сақталады.</div>
    <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow"><span class="lv lv${LEVELS.find(x=>x[1]===t)[2]}">${t}</span></span><span class="hint">${n} ай үзбей</span>${!A&&best>=n?`<span class="pill ok">Салынды</span>`:""}</div>`).join("")}</div></section>
   ${A?"":`<section class="card"><h2>Менің салымдарым</h2>${(me.withdrawals||[]).length?`<div class="list" style="margin-bottom:6px">${me.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><span class="pill no">Қайтарылды</span></div>`).join("")}</div>`:""}${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. «Үлес қосу» батырмасын басыңыз.</div>`}</section>`}
-  ${RULES}`;
+  ${rules()}`;
 }
 function payInfoCard(){
   return `<section class="card"><h2>Аударым деректері</h2><div class="hint">Салымшылар «Үлес қосу» басқанда осыны көреді. Мысалы: Kaspi Gold +7 7xx xxx xx xx, Аты-жөні.</div>
@@ -375,10 +377,11 @@ function renderHomes(){
   if(homeForm)return renderHomeForm();
   const h=openHome&&homes.find(x=>x.id===openHome);
   if(h)return renderHome(h);
-  const sumLeft=homes.reduce((a,x)=>a+Math.max(0,x.total-x.paid),0), sumPaid=homes.reduce((a,x)=>a+ +x.paid,0);
-  return `<section class="card"><div class="row" style="justify-content:space-between"><h2>Үйлер · ${homes.length}</h2><button class="small pri" id="homeNew" style="flex:0 0 auto">+ Үй қосу</button></div>
-   ${homes.length?`<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><b class="num" style="font-size:18px">${money(sumPaid)}</b><span>қайтарылды</span></div><div class="stat"><b class="num" style="font-size:18px">${money(sumLeft)}</b><span>қайтарылуы керек</span></div></div>`:""}
-   ${homes.length?`<div class="list">${homes.map(x=>{const c=calc(x);return `<button class="li" data-home="${x.id}" style="all:unset;cursor:pointer;display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)">
+  const homesG=homes.filter(x=>(x.grp||"teacher")===viewGrp);
+  const sumLeft=homesG.reduce((a,x)=>a+Math.max(0,x.total-x.paid),0), sumPaid=homesG.reduce((a,x)=>a+ +x.paid,0);
+  return `<section class="card"><div class="row" style="justify-content:space-between"><h2>Үйлер · ${homesG.length}</h2><button class="small pri" id="homeNew" style="flex:0 0 auto">+ Үй қосу</button></div>
+   ${homesG.length?`<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><b class="num" style="font-size:18px">${money(sumPaid)}</b><span>қайтарылды</span></div><div class="stat"><b class="num" style="font-size:18px">${money(sumLeft)}</b><span>қайтарылуы керек</span></div></div>`:""}
+   ${homesG.length?`<div class="list">${homesG.map(x=>{const c=calc(x);return `<button class="li" data-home="${x.id}" style="all:unset;cursor:pointer;display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)">
       <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div style="min-width:0"><div class="name" style="font-weight:600">${esc(x.title)}</div><div class="hint">${esc(x.buyer)}</div></div>${homeStatus(c)}</div>
       <div class="bar"><i style="width:${Math.min(100,x.paid/x.total*100)}%"></i></div>
       <div class="row hint num" style="justify-content:space-between"><span>Қалды ${money(c.remaining)}</span><span>${c.done?"":"Айына "+money(c.monthly)+" · "+c.left+" ай"}</span></div></button>`}).join("")}</div>`
@@ -420,7 +423,7 @@ function bindHomes(){
   fmtInput($("#hTotal"),upd); fmtInput($("#hPaid"),upd); $("#hMonths")?.addEventListener("input",upd); if($("#hCalc"))upd();
   fmtInput($("#hpAmt"));
   $("#homeF")?.addEventListener("submit",async e=>{e.preventDefault();const btn=$("#homeBtn");busy(btn,true);note=null;
-    try{const id=await rpc("coop_home_save",{p_token:token,p_id:homeForm.id||null,p_title:$("#hTitle").value,p_buyer:$("#hBuyer").value,p_total:numOf($("#hTotal")),p_start:$("#hStart").value,p_months:+$("#hMonths").value,p_note:$("#hNote").value||null});
+    try{const id=await rpc("coop_home_save2",{p_grp:viewGrp,p_token:token,p_id:homeForm.id||null,p_title:$("#hTitle").value,p_buyer:$("#hBuyer").value,p_total:numOf($("#hTotal")),p_start:$("#hStart").value,p_months:+$("#hMonths").value,p_note:$("#hNote").value||null});
       const pre=numOf($("#hPaid")); if(!homeForm.id&&pre>0)await rpc("coop_home_pay",{p_token:token,p_home:id,p_amount:pre,p_date:(()=>{const d=new Date();const x=new Date(d.getFullYear(),d.getMonth(),0);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`})(),p_note:"Бұған дейінгі төлемдер"});
       homeForm=null;openHome=id;toast("Сақталды");await load();return}catch(err){note={err:err.message}} busy(btn,false);render()});
   $("#hpF")?.addEventListener("submit",async e=>{e.preventDefault();const btn=$("#hpBtn");busy(btn,true);note=null;
@@ -448,19 +451,22 @@ function bindHomes(){
 function renderAdmin(){
   const n1=adm.new_members.length,n2=adm.pending.length;
   const tabs=`<div class="tabs"><button data-tab="main" class="${tab==="main"?"on":""}">Басты</button><button data-tab="home" class="${tab==="home"?"on":""}">Растау${n1+n2?`<span class="badge">${n1+n2}</span>`:""}</button><button data-tab="homes" class="${tab==="homes"?"on":""}">Үйлер</button><button data-tab="members" class="${tab==="members"?"on":""}">Салымшылар</button></div>`;
-  if(tab==="main")return renderMember(faceCard()+tabs);
+  const sw=`<div class="tabs" style="background:var(--paper)"><span class="hint" style="align-self:center;padding:0 6px;flex:0 0 auto">Қор:</span>${["teacher","biz"].map(g=>`<button data-grp="${g}" class="${viewGrp===g?"on":""}">${GN[g]}</button>`).join("")}</div>`;
+  if(tab==="main")return renderMember(faceCard()+tabs+sw);
   let body="";
   if(tab==="home"){
-    body=`<section class="card"><h2>Жаңа салымшылар</h2>${n1?`<div class="list">${adm.new_members.map(m=>`<div class="li"><div class="grow"><div class="name">${esc(m.full_name)}</div><div class="hint num">+${esc(m.phone)} · ${fmtD(m.created_at)}</div></div><button class="small pri" data-mok="${m.id}">Растау</button><button class="small" data-mno="${m.id}">Бас тарту</button></div>`).join("")}</div>`:`<div class="empty">Жаңа өтініш жоқ.</div>`}</section>
+    body=`<section class="card"><h2>Жаңа салымшылар</h2>${n1?`<div class="list">${adm.new_members.map(m=>`<div class="li"><div class="grow"><div class="name">${esc(m.full_name)} <span class="pill ${m.grp==="biz"?"wait":"ok"}">${G1[m.grp]}</span></div><div class="hint num">+${esc(m.phone)} · ${fmtD(m.created_at)}</div></div><button class="small pri" data-mok="${m.id}">Растау</button><button class="small" data-mno="${m.id}">Бас тарту</button></div>`).join("")}</div>`:`<div class="empty">Жаңа өтініш жоқ.</div>`}</section>
     ${payInfoCard()}
-    <section class="card"><h2>Салымды растау</h2><div class="hint">Ақша шотқа түскенін тексеріп барып растаңыз.</div>${n2?`<div class="list">${adm.pending.map(p=>`<div class="li"><div class="grow"><div class="name">${esc(p.full_name)}</div><div class="num" style="font-weight:600">${money(p.amount)}</div><div class="hint">${fmtD(p.paid_on)}${p.note?" · "+esc(p.note):""}</div></div><button class="small pri" data-pok="${p.id}">Түсті</button><button class="small" data-pno="${p.id}">Түспеді</button></div>`).join("")}</div>`:`<div class="empty">Расталмаған салым жоқ.</div>`}</section>`;
+    <section class="card"><h2>Салымды растау</h2><div class="hint">Ақша шотқа түскенін тексеріп барып растаңыз.</div>${n2?`<div class="list">${adm.pending.map(p=>`<div class="li"><div class="grow"><div class="name">${esc(p.full_name)} <span class="pill ${p.grp==="biz"?"wait":"ok"}">${G1[p.grp]}</span></div><div class="num" style="font-weight:600">${money(p.amount)}</div><div class="hint">${fmtD(p.paid_on)}${p.note?" · "+esc(p.note):""}</div></div><button class="small pri" data-pok="${p.id}">Түсті</button><button class="small" data-pno="${p.id}">Түспеді</button></div>`).join("")}</div>`:`<div class="empty">Расталмаған салым жоқ.</div>`}</section>`;
   }else if(tab==="homes"){
-    body=renderHomes();
+    body=sw+renderHomes();
   }else if(tab==="members"){
-    const list=adm.members.filter(m=>!m.is_admin);
-    body=`<section class="card"><h2>Салымшылар · ${list.length}</h2><div class="hint">Біреуіне ақшасын қайтарсаң, атын басып «Қайтарып бердім» деп жаз.</div>${list.length?`<div class="list">${list.map((m,i)=>{const open=openMember===m.id;return `<div style="border-top:1px solid var(--line)">
+    body=sw;
+    const list=adm.members.filter(m=>!m.is_admin&&m.grp===viewGrp);
+    body+=`<section class="card"><h2>Салымшылар · ${list.length}</h2><div class="hint">${GN[viewGrp]} қоры. Біреуіне ақшасын қайтарсаң, атын басып «Қайтарып бердім» деп жаз.</div>${list.length?`<div class="list">${list.map((m,i)=>{const open=openMember===m.id;return `<div style="border-top:1px solid var(--line)">
       <button class="li" data-mem="${m.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 0;width:100%"><span class="place">${i+1}</span><div class="grow"><div class="name">${esc(m.full_name)} ${lvChip(m.best)}</div><div class="hint num">+${esc(m.phone)}</div></div><div style="text-align:right"><b class="num">${pts(m.points)} балл</b><div class="hint num">${pts(m.points-m.bonus)} + ${pts(m.bonus)} бонус</div><div class="hint num">${money(m.total)}</div></div></button>
       ${open?`<div class="card" style="margin-bottom:10px;background:var(--paper)">
+        <button class="small" data-setgrp="${m.id}" data-to="${m.grp==="biz"?"teacher":"biz"}" style="justify-self:start">${armed==="g"+m.id?"Растау: ":""}${G1[m.grp==="biz"?"teacher":"biz"]} тобына ауыстыру</button>
         <div class="hint num">Салғаны ${money(m.contributed)} · қайтарылғаны ${money(m.contributed-m.total)} · қорда ${money(m.total)}</div>
         ${m.withdrawals.length?`<div class="list">${m.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><button class="small" data-wdel="${w.id}">${armed==="w"+w.id?"Растау":"Өшіру"}</button></div>`).join("")}</div>`:""}
         ${m.total>0?`<form id="wdF" class="card" style="border:none;padding:0;background:none">
@@ -471,10 +477,10 @@ function renderAdmin(){
           <button class="pri" type="submit" id="wdBtn">Қайтарып бердім</button></form>`:`<div class="hint">Ақшасы толық қайтарылған. Аккаунты қалады: қайта салса, нөлден бастайды.</div>`}
       </div>`:""}</div>`}).join("")}</div>`:`<div class="empty">Әзірге расталған салымшы жоқ. Мұғалімдерге сайт сілтемесін жіберіңіз.</div>`}</section>`;
   }else{
-    body=`<section class="card"><h2>Мұғалімдер көретін үздік 10</h2>${topList(me.top)}</section>${RULES}`;
+    body=`<section class="card"><h2>Мұғалімдер көретін үздік 10</h2>${topList(me.top)}</section>${rules()}`;
   }
   return `${head(`<button class="small" id="out">Шығу</button>`)}
-  <section class="vault"><div class="eyebrow">Қорда жиналды · қор иесі</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы · оның ішінде үйлерден қайтқаны ${money(me.repaid)}</div></section>
+  <section class="vault"><div class="eyebrow">${GN[viewGrp]} қоры · қор иесі</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы · оның ішінде үйлерден қайтқаны ${money(me.repaid)}</div></section>
   ${noteHtml()}${faceCard()}${tabs}${body}`;
 }
 
@@ -485,6 +491,10 @@ function render(){
 }
 function bind(){
   bindHomes();
+  document.querySelectorAll("[data-rg]").forEach(b=>b.addEventListener("click",()=>{regGrp=b.dataset.rg;const keep={n:$("#fName")?.value,p:$("#fPhone")?.value};render();if($("#fName"))$("#fName").value=keep.n||"";if($("#fPhone"))$("#fPhone").value=keep.p||""}));
+  document.querySelectorAll("[data-grp]").forEach(b=>b.addEventListener("click",async()=>{viewGrp=b.dataset.grp;try{localStorage.setItem("qor_grp",viewGrp)}catch{};openHome=null;openMember=null;giving=false;await load()}));
+  document.querySelectorAll("[data-setgrp]").forEach(b=>b.addEventListener("click",async()=>{const k="g"+b.dataset.setgrp;if(armed!==k){armed=k;render();return}armed=null;
+    try{await rpc("coop_set_grp",{p_token:token,p_member:b.dataset.setgrp,p_grp:b.dataset.to});openMember=null;toast("Тобы ауыстырылды");await load()}catch(err){toast(err.message)}}));
   document.querySelectorAll("[data-mem]").forEach(b=>b.addEventListener("click",()=>{openMember=openMember===b.dataset.mem?null:b.dataset.mem;armed=null;note=null;render()}));
   const wd=$("#wdAmt"); if(wd){const m=adm.members.find(x=>x.id===openMember);
     wd.addEventListener("input",()=>{const v=+wd.value.replace(/\D/g,"");wd.value=v?v.toLocaleString("ru-RU").replace(/\s/g," "):"";
@@ -507,7 +517,7 @@ function bind(){
     try{
       if(view==="register"){
         if(pin!==$("#fPin2").value)throw new Error("Құпиясөздер сәйкес емес.");
-        const r=await rpc("coop_register",{p_phone:phone,p_name:$("#fName").value,p_pin:pin});
+        const r=await rpc("coop_register2",{p_phone:phone,p_name:$("#fName").value,p_pin:pin,p_grp:regGrp});
         if(r==="admin"){ const l=await rpc("coop_login",{p_phone:phone,p_pin:pin}); token=l.token; store.set("qor_token",token); note={ok:"Сіз қор иесі ретінде тіркелдіңіз."}; await load(); return }
         view="login"; note={ok:"Өтініш жіберілді. Қор иесі растаған соң осы нөмір мен құпиясөзбен кіресіз."}; render(); return;
       }
@@ -522,11 +532,11 @@ function bind(){
   const amt=$("#pAmt");
   amt?.addEventListener("input",()=>{const v=+amt.value.replace(/\D/g,"");amt.value=v?v.toLocaleString("ru-RU").replace(/\s/g," "):"";
     if(me.is_admin)return;
-    const left=25-(me.month_points||0), p=v/10000;
-    $("#pPts").textContent=v?`Осы ай үшін +${pts(Math.min(p,Math.max(0,left)))} балл (расталғаннан кейін)`:"10 000 ₸ = 1 балл";});
+    const left=me.cap-(me.month_points||0), p=v/me.rate;
+    $("#pPts").textContent=v?`Осы ай үшін +${pts(Math.min(p,Math.max(0,left)))} балл (расталғаннан кейін)`:`${money(me.rate)} = 1 балл`;});
   $("#payF")?.addEventListener("submit",async e=>{
     e.preventDefault(); const btn=$("#payBtn"); busy(btn,true); note=null;
-    try{ await rpc("coop_add",{p_token:token,p_amount:+amt.value.replace(/\D/g,""),p_date:$("#pDate").value,p_note:$("#pNote").value||null});
+    try{ await rpc("coop_add2",{p_token:token,p_amount:+amt.value.replace(/\D/g,""),p_date:$("#pDate").value,p_note:$("#pNote").value||null,p_grp:viewGrp});
       toast(me.is_admin?"Қорға қосылды":"Жіберілді. Қор иесі растағанын күтіңіз"); giving=false; await load(); return }
     catch(err){ note={err:err.message} } busy(btn,false); render();
   });
