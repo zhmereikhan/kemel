@@ -285,6 +285,15 @@ function renderMember(tabsHtml=""){
    <div class="sub">${me.members} салымшы · Адал жинақ — берекелі шаңырақ</div>
    <button class="gold" id="giveBtn" style="margin-top:10px;justify-self:start;position:relative;z-index:1">${giving?"Жабу":"Үлес қосу"}</button></section>
   ${tabsHtml}
+  <section class="card"><h2>Қор неден құралды</h2>
+   <div class="list">
+    <div class="li"><span class="grow name">Қор иесінің үлесі</span><b class="num">${money(me.owner_total)}</b></div>
+    <div class="li"><span class="grow name">Ұстаздардың үлесі</span><b class="num">${money(me.teachers_total)}</b></div>
+    ${me.repaid?`<div class="li"><span class="grow name">Үй алғандардың қайтарғаны</span><b class="num">${money(me.repaid)}</b></div>`:""}
+   </div>
+   ${me.fund>0?`<div class="bar" style="display:flex"><i style="width:${me.owner_total/me.fund*100}%;border-radius:0"></i><i style="width:${me.teachers_total/me.fund*100}%;background:var(--ok);border-radius:0"></i><i style="width:${me.repaid/me.fund*100}%;background:var(--h-roof);border-radius:0"></i></div>
+   <div class="row hint" style="gap:14px"><span style="flex:0 0 auto"><span style="color:var(--gold)">●</span> Қор иесі</span><span style="flex:0 0 auto"><span style="color:var(--ok)">●</span> Ұстаздар</span>${me.repaid?`<span style="flex:0 0 auto"><span style="color:var(--h-roof)">●</span> Қайтарылғаны</span>`:""}</div>`:""}
+   <div class="hint">Ұстаздардың әрқайсысы қанша салғаны көрсетілмейді, тек жалпы сомасы.</div></section>
   ${giving?`<section class="card"><h2>Үлес қосу</h2>${A?`<div class="hint">Сенің салымың бірден расталады. Барлығы салғаның: <b class="num">${money(own)}</b></div>`:payInfoBlock()}
    <form id="payF" class="card" style="border:none;padding:0">
     <div class="row"><label for="pAmt">Аударған сомаңыз, ₸<input id="pAmt" inputmode="numeric" placeholder="50 000" required></label>
