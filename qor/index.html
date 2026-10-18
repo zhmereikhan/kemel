@@ -169,6 +169,7 @@ const noteHtml=()=>note?`<div class="msg ${note.err?"err":"ok"}">${esc(note.err|
 const RULES=`<section class="card"><h2>Ереже қысқаша</h2><ol class="rules">
 <li>Әр 10 000 ₸ салым үшін 1 балл беріледі.</li>
 <li>Бір айда ең көбі 25 балл жинауға болады, артық салым балл қоспайды.</li>
+<li>Ай сайын кемінде 10 000 ₸ салып, 3 ай үзбесең +2 бонус балл қосылады.</li>
 <li>Салым қор иесі растағаннан кейін ғана сомаға және балға қосылады.</li>
 <li>Әр салымға қор иесі қарыз қолхатын береді.</li>
 <li>Үй кезегін комиссия балл, жағдай және өтіл бойынша шешеді.</li>
@@ -200,28 +201,85 @@ function faceCard(){
   if(!canFace||me.faceid>0)return "";
   return `<section class="card"><h3>Келесі жолы Face ID-мен кір</h3><div class="hint">Құпиясөз терудің қажеті болмайды. Бұл телефонға ғана қосылады.</div><button class="gold" id="faceAdd">Face ID қосу</button></section>`;
 }
+const TIPS=[
+ "Айлық түскен күні алдымен қорға үлесіңді сал, қалғанын сосын жұмса. Бұл «алдымен өзіңе төле» деп аталады.",
+ "Апталық шығыныңды бір парақшаға жазып көр. Ақшаның қайда кететінін көрген адам оны оңай үнемдейді.",
+ "Күніне 1 000 ₸ үнемдесең, айына 30 000 ₸ болады. Бұл қорда 3 балл.",
+ "Қымбат зат алар алдында 3 күн күт. Үш күннен кейін де керек болса, сонда ал.",
+ "Дүкенге тізіммен бар. Тізімсіз барған адам шамамен үштен бір есе көп жұмсайды.",
+ "Жазылымдарыңды тексер: қолданбайтын қосымшаға, сервиске ай сайын ақша кетіп жатқан жоқ па?",
+ "Несие картасымен ұсақ-түйек алма. Пайыз — үйге жинаған ақшаңды жейтін жау.",
+ "Түскі асты үйден ала жүру айына 20–40 мың теңге үнемдейді.",
+ "Сыйлыққа, тойға арналған шығынды алдын ала жоспарла. Күтпеген той ең қымбат той.",
+ "Қосымша табыс (репетиторлық, курс) түссе, оның жартысын бірден қорға сал.",
+ "Мақсатыңды көзге көрінетін жерге іл: «Өз үйім — 20__ жыл». Көзге көрінген мақсат ұмытылмайды.",
+ "Ұсақ шығындар — үлкен шығын. Күнделікті кофе, такси, тәттілерді бір ай есептеп көр.",
+ "Отбасыңмен бірге жина: балаларға да мақсатты айт. Ортақ мақсат отбасын біріктіреді.",
+ "«Аз да болса, үзбей» — қорда 3 ай үзбей салсаң, +2 бонус балл аласың.",
+ "Жеңілдік (скидка) — үнем емес, егер ол затты алмақ болмасаң.",
+ "Коммуналдық төлемдерді уақытында төле. Өсімпұл — бос кеткен ақша.",
+ "Ақшаны бөлек шотқа ұста: күнделікті шығын бір карта, жинақ басқа карта.",
+ "Ай соңында қалған ақшаны «бос» деп ойлама. Қалғанын қорға салу — ең жақсы әдет.",
+ "Сапалы затты бір рет ал. Арзан затты үш рет алғанша, сапалысы арзанға түседі.",
+ "Қарызға ақша берерде, өзің қайтармай кетсе де көтере алатын соманы ғана бер.",
+ "Мерекеге дейін бір ай бұрын бюджет құр: сыйлық, дастархан, киім — бәрі тізімде болсын.",
+ "Бір күнді «ақшасыз күн» ет: аптасына бір күн ештеңе сатып алмай көр.",
+ "Үй алғанда тек бағасын емес, ай сайынғы шығынын да (коммуналдық, жөндеу) есепте.",
+ "Бала-шағаңның оқуына арнап жинақты ерте баста. Уақыт — ең жақсы көмекші.",
+ "Нәпсіні тежеу — үнемнің басы. «Керек пе, әлде қалау ма?» деп өзіңнен сұра.",
+ "Табысыңның кемінде 10%-ын жина. Мүмкін болса — 20%.",
+ "Адал табыс — берекелі табыс. Аз да болса, берекелі ақша көпке жетеді.",
+ "Жанармай мен жол шығынын азайт: әріптестеріңмен бірге мектепке бару — үнем де, жақсы әңгіме де.",
+ "Жаңа телефон алмай тұрып ойлан: ескісі әлі жақсы жұмыс істей ме?",
+ "Әр салымыңды жазып жүр. Өсіп келе жатқан соманы көру — ең күшті мотивация.",
+];
+const LEVELS=[[24,"Теңіз"],[12,"Көл"],[6,"Өзен"],[3,"Бұлақ"],[1,"Тамшы"]];
+const levelOf=b=>{for(const [n,t] of LEVELS)if(b>=n)return t;return null};
+const tipToday=()=>{const d=new Date(),s=new Date(d.getFullYear(),0,0);return TIPS[Math.floor((d-s)/864e5)%TIPS.length]};
+let giving=false;
+function payInfoBlock(){
+  const t=me.pay_info;
+  if(!t)return `<div class="hint">Қор иесі аударым деректерін әлі жазбаған. Ақшаны қалай беретініңді онымен келіс.</div>`;
+  return `<div class="card" style="background:var(--gold-soft);border-color:transparent;padding:14px;gap:8px"><div class="eyebrow">Осыған аударыңыз</div>
+   <div id="payInfo" style="white-space:pre-wrap;font-weight:600;overflow-wrap:anywhere">${esc(t)}</div>
+   <button class="small" id="copyPay" type="button" style="justify-self:start">Көшіру</button></div>`;
+}
 function renderMember(){
-  const mp=me.month_points||0;
+  const mp=me.month_points||0, st=me.streak||0, best=me.best||0, lv=levelOf(best);
+  const toBonus=3-(st%3);
   return `${head(`<button class="small" id="out">Шығу</button>`)}
-  <section class="vault"><div class="eyebrow">Қорда жиналды</div><div class="big num">${money(me.fund)}</div><div class="sub">${me.members} салымшы · Алматыда бір үй шамамен 25 млн ₸</div></section>
-  ${noteHtml()}
-  <section class="card"><div class="eyebrow">${esc(me.name)}</div>
-   <div class="stats"><div class="stat"><b class="num">${me.points||0}</b><span>балл</span></div><div class="stat"><b class="num">${me.rank||"—"}<small style="font-size:14px;color:var(--mute)"> / ${me.members}</small></b><span>кезектегі орын</span></div><div class="stat"><b class="num" style="font-size:17px">${money(me.total)}</b><span>расталған салым</span></div></div>
-   <div><div class="row" style="justify-content:space-between"><span class="hint">Осы айдың балы</span><b class="num">${mp} / 25</b></div><div class="bar"><i style="width:${Math.min(100,mp/25*100)}%"></i></div></div>
-   ${mp>=25?`<div class="hint">Осы айдың шегіне жеттің. Осы айғы қосымша салым балл қоспайды.</div>`:""}
-  </section>
-  <section class="card"><h2>Салым қостым</h2>
+  <section class="vault"><div class="eyebrow">Үйге жиналды</div><div class="big num">${money(me.fund)}</div>
+   <div class="sub">${me.members} салымшы · Адал жинақ — берекелі шаңырақ</div>
+   <button class="gold" id="giveBtn" style="margin-top:10px;justify-self:start;position:relative;z-index:1">${giving?"Жабу":"Үлес қосу"}</button></section>
+  ${giving?`<section class="card"><h2>Үлес қосу</h2>${payInfoBlock()}
    <form id="payF" class="card" style="border:none;padding:0">
-    <div class="row"><label for="pAmt">Сомасы, ₸<input id="pAmt" inputmode="numeric" placeholder="50 000" required></label>
+    <div class="row"><label for="pAmt">Аударған сомаңыз, ₸<input id="pAmt" inputmode="numeric" placeholder="50 000" required></label>
     <label for="pDate">Күні<input id="pDate" type="date" value="${today()}" max="${today()}" required></label></div>
-    <label for="pNote">Ескерту (міндетті емес)<input id="pNote" maxlength="200" placeholder="Kaspi аударым, қолма-қол…"></label>
+    <label for="pNote">Ескерту (міндетті емес)<input id="pNote" maxlength="200" placeholder="Kaspi, Halyk, қолма-қол…"></label>
     <div class="hint" id="pPts">10 000 ₸ = 1 балл</div>
-    <button class="pri" type="submit" id="payBtn">Салдым деп жіберу</button>
-   </form></section>
+    <button class="pri" type="submit" id="payBtn">Аудардым, растауға жіберу</button>
+    <div class="hint">Қор иесі ақша түскенін көрген соң растайды. Сосын ғана сомаға және балға қосылады.</div>
+   </form></section>`:""}
+  ${noteHtml()}
+  <section class="card"><div class="row" style="justify-content:space-between"><div class="eyebrow" style="flex:1 1 auto">${esc(me.name)}</div>${lv?`<span class="pill ok" style="flex:0 0 auto">${lv}</span>`:""}</div>
+   <div class="stats"><div class="stat"><b class="num">${me.points||0}</b><span>балл${me.bonus?` · оның ${me.bonus} бонус`:""}</span></div>
+    <div class="stat"><b class="num">${me.rank||"—"}<small style="font-size:14px;color:var(--mute)"> / ${me.members}</small></b><span>рейтингтегі орын</span></div>
+    <div class="stat"><b class="num">${st}</b><span>ай үзбей</span></div></div>
+   <div><div class="row" style="justify-content:space-between"><span class="hint">Осы айдың балы</span><b class="num">${mp} / 25</b></div><div class="bar"><i style="width:${Math.min(100,mp/25*100)}%"></i></div></div>
+   <div><div class="row" style="justify-content:space-between"><span class="hint">Келесі +2 бонусқа дейін</span><b class="num">${3-toBonus} / 3 ай</b></div><div class="bar"><i style="width:${(3-toBonus)/3*100}%;background:var(--ok)"></i></div></div>
+   <div class="hint">${st?`Үзбей ${st} ай салып келесің. Тағы ${toBonus} ай үзбесең, +2 бонус балл.`:`Ай сайын кемінде 10 000 ₸ салып, 3 ай үзбесең +2 бонус балл аласың.`}${mp>=25?" Осы айдың шегіне жеттің.":""}</div>
+  </section>
+  <section class="card" style="background:var(--gold-soft);border-color:transparent"><div class="eyebrow">Күннің кеңесі</div><div style="font-size:16px">${esc(tipToday())}</div></section>
   ${faceCard()}
-  <section class="card"><h2>Үздік 10</h2><div class="hint">Балл бойынша. Сомалар көрсетілмейді.</div>${topList(me.top)}</section>
-  <section class="card"><h2>Менің салымдарым</h2>${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. Ақша аударған соң жоғарыдағы формаға жазыңыз.</div>`}</section>
+  <section class="card"><h2>Рейтинг</h2><div class="hint">Тек балл көрсетіледі. Кім қанша салғанын ешкім көрмейді.</div>${topList(me.top)}</section>
+  <section class="card"><h2>Деңгейлер</h2><div class="hint">Үзбей салған ең ұзақ кезеңіңе қарай беріледі.</div>
+   <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow name">${t}</span><span class="hint">${n} ай үзбей</span>${best>=n?`<span class="pill ok">Алдың</span>`:""}</div>`).join("")}</div></section>
+  <section class="card"><h2>Менің салымдарым</h2>${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. «Үлес қосу» батырмасын басыңыз.</div>`}</section>
   ${RULES}`;
+}
+function payInfoCard(){
+  return `<section class="card"><h2>Аударым деректері</h2><div class="hint">Салымшылар «Үлес қосу» басқанда осыны көреді. Мысалы: Kaspi Gold +7 7xx xxx xx xx, Аты-жөні.</div>
+   <textarea id="piText" rows="3" maxlength="500">${esc(me.pay_info||"")}</textarea><button class="small pri" id="piSave" style="justify-self:start">Сақтау</button></section>`;
 }
 function ownerCard(){
   const own=(adm.members.find(m=>m.is_admin)||{}).total||0;
@@ -345,6 +403,7 @@ function renderAdmin(){
   let body="";
   if(tab==="home"){
     body=`<section class="card"><h2>Жаңа салымшылар</h2>${n1?`<div class="list">${adm.new_members.map(m=>`<div class="li"><div class="grow"><div class="name">${esc(m.full_name)}</div><div class="hint num">+${esc(m.phone)} · ${fmtD(m.created_at)}</div></div><button class="small pri" data-mok="${m.id}">Растау</button><button class="small" data-mno="${m.id}">Бас тарту</button></div>`).join("")}</div>`:`<div class="empty">Жаңа өтініш жоқ.</div>`}</section>
+    ${payInfoCard()}
     ${ownerCard()}
     <section class="card"><h2>Салымды растау</h2><div class="hint">Ақша шотқа түскенін тексеріп барып растаңыз.</div>${n2?`<div class="list">${adm.pending.map(p=>`<div class="li"><div class="grow"><div class="name">${esc(p.full_name)}</div><div class="num" style="font-weight:600">${money(p.amount)}</div><div class="hint">${fmtD(p.paid_on)}${p.note?" · "+esc(p.note):""}</div></div><button class="small pri" data-pok="${p.id}">Түсті</button><button class="small" data-pno="${p.id}">Түспеді</button></div>`).join("")}</div>`:`<div class="empty">Расталмаған салым жоқ.</div>`}</section>`;
   }else if(tab==="homes"){
@@ -367,6 +426,9 @@ function render(){
 }
 function bind(){
   bindHomes();
+  $("#giveBtn")?.addEventListener("click",()=>{giving=!giving;note=null;render();if(giving)setTimeout(()=>$("#pAmt")?.focus(),50)});
+  $("#copyPay")?.addEventListener("click",async e=>{const t=me.pay_info||"";try{await navigator.clipboard.writeText(t);toast("Көшірілді")}catch{const r=document.createRange();r.selectNodeContents($("#payInfo"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Белгіленді, көшіріп алыңыз")}});
+  $("#piSave")?.addEventListener("click",async e=>{busy(e.currentTarget,true);try{await rpc("coop_set_payinfo",{p_token:token,p_text:$("#piText").value});toast("Сақталды");await load()}catch(err){toast(err.message);busy(e.currentTarget,false)}});
   $("#swap")?.addEventListener("click",()=>{view=view==="register"?"login":"register";note=null;render()});
   $("#faceBtn")?.addEventListener("click",e=>faceLogin(e.currentTarget));
   $("#faceAdd")?.addEventListener("click",e=>faceAdd(e.currentTarget));
@@ -397,7 +459,7 @@ function bind(){
   $("#payF")?.addEventListener("submit",async e=>{
     e.preventDefault(); const btn=$("#payBtn"); busy(btn,true); note=null;
     try{ await rpc("coop_add",{p_token:token,p_amount:+amt.value.replace(/\D/g,""),p_date:$("#pDate").value,p_note:$("#pNote").value||null});
-      toast(me.is_admin?"Қорға қосылды":"Жіберілді. Қор иесі растағанын күтіңіз"); await load(); return }
+      toast(me.is_admin?"Қорға қосылды":"Жіберілді. Қор иесі растағанын күтіңіз"); giving=false; await load(); return }
     catch(err){ note={err:err.message} } busy(btn,false); render();
   });
   document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;note=null;render()}));
