@@ -315,7 +315,7 @@ function bindHomes(){
   fmtInput($("#hpAmt"));
   $("#homeF")?.addEventListener("submit",async e=>{e.preventDefault();const btn=$("#homeBtn");busy(btn,true);note=null;
     try{const id=await rpc("coop_home_save",{p_token:token,p_id:homeForm.id||null,p_title:$("#hTitle").value,p_buyer:$("#hBuyer").value,p_total:numOf($("#hTotal")),p_start:$("#hStart").value,p_months:+$("#hMonths").value,p_note:$("#hNote").value||null});
-      const pre=numOf($("#hPaid")); if(!homeForm.id&&pre>0)await rpc("coop_home_pay",{p_token:token,p_home:id,p_amount:pre,p_date:today(),p_note:"Бұған дейінгі төлемдер"});
+      const pre=numOf($("#hPaid")); if(!homeForm.id&&pre>0)await rpc("coop_home_pay",{p_token:token,p_home:id,p_amount:pre,p_date:(()=>{const d=new Date();const x=new Date(d.getFullYear(),d.getMonth(),0);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`})(),p_note:"Бұған дейінгі төлемдер"});
       homeForm=null;openHome=id;toast("Сақталды");await load();return}catch(err){note={err:err.message}} busy(btn,false);render()});
   $("#hpF")?.addEventListener("submit",async e=>{e.preventDefault();const btn=$("#hpBtn");busy(btn,true);note=null;
     try{await rpc("coop_home_pay",{p_token:token,p_home:openHome,p_amount:numOf($("#hpAmt")),p_date:$("#hpDate").value,p_note:$("#hpNote").value||null});toast("Төлем жазылды");await load();return}
