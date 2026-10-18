@@ -14,14 +14,16 @@
   --ink:#16302f; --paper:#f3f5f2; --card:#ffffff; --line:#d9e0dc; --mute:#5e706c;
   --vault:#1d3b3a; --vault-fg:#eaf2ee; --gold:#c9932e; --gold-soft:#f6ead1;
   --ok:#2f7d4f; --ok-soft:#e1f1e6; --warn:#a86a10; --warn-soft:#fbefd8; --bad:#b23b3b; --bad-soft:#f8e2e2;
-  --l1:#e3f1f7; --l1f:#2d6f8a; --l2:#d8f0ea; --l2f:#1f7a66; --l3:#d9e6fb; --l3f:#2856a8; --l4:#e4defa; --l4f:#5236a8; --l5:#14365c; --l5f:#f3d58a;
+  --l1:#efe6da; --l1f:#7a5232; --l2:#e7e7e2; --l2f:#555a55; --l3:#f6e0d6; --l3f:#a4462a; --l4:#dcefe9; --l4f:#1f6f5f; --l5:#e1e6f6; --l5f:#2f4e9a; --l6:#1d3b3a; --l6f:#f3d58a;
+  --h-ground:#8a6a49; --h-found:#9a9d98; --h-wall:#c8643f; --h-win:#7fb7c9; --h-door:#6b4428; --h-roof:#2f4e9a; --h-light:#f3c95a; --h-plan:#b8c3bf;
   --display:"Rubik",system-ui,sans-serif; --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root{
   --ink:#e4ece9; --paper:#0f1817; --card:#172221; --line:#2a3836; --mute:#93a5a1;
   --vault:#132a29; --vault-fg:#eaf2ee; --gold:#e0b158; --gold-soft:#3a2f17;
-  --l1:#16313b; --l1f:#8fd0ea; --l2:#123329; --l2f:#7fdcc3; --l3:#17284a; --l3f:#9dbcf5; --l4:#251c47; --l4f:#c3b3f7; --l5:#f0cf7d; --l5f:#14263f;
+  --l1:#33271c; --l1f:#e1bf98; --l2:#2a2d2b; --l2f:#c9ccc7; --l3:#3a2219; --l3f:#f1a083; --l4:#12322b; --l4f:#86d6c1; --l5:#1b2645; --l5f:#a9bdf2; --l6:#e0b158; --l6f:#1a1405;
+  --h-ground:#a98563; --h-found:#7d817d; --h-wall:#d5784f; --h-win:#5d93a6; --h-door:#8a5a37; --h-roof:#6f8fe0; --h-light:#f3c95a; --h-plan:#3d4a47;
   --ok:#6cc48f; --ok-soft:#173326; --warn:#e3a94a; --warn-soft:#3a2a12; --bad:#ec8080; --bad-soft:#3b1d1d;
   color-scheme:dark}}
 *{box-sizing:border-box}
@@ -75,7 +77,8 @@ button:disabled{opacity:.55;cursor:wait}
 .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.wait{background:var(--warn-soft);color:var(--warn)} .pill.no{background:var(--bad-soft);color:var(--bad)}
 .lv{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;flex:0 0 auto}
 .lv::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.lv1{background:var(--l1);color:var(--l1f)} .lv2{background:var(--l2);color:var(--l2f)} .lv3{background:var(--l3);color:var(--l3f)} .lv4{background:var(--l4);color:var(--l4f)} .lv5{background:var(--l5);color:var(--l5f)}
+.lv1{background:var(--l1);color:var(--l1f)} .lv2{background:var(--l2);color:var(--l2f)} .lv3{background:var(--l3);color:var(--l3f)} .lv4{background:var(--l4);color:var(--l4f)} .lv5{background:var(--l5);color:var(--l5f)} .lv6{background:var(--l6);color:var(--l6f)}
+.house{width:100%;max-width:260px;height:auto;justify-self:center;display:block}
 .rt{display:grid;grid-template-columns:28px minmax(0,1fr) 52px 48px 52px;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
 .rt.hd{border-top:none;padding:0 0 4px;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
 .rt>.n{text-align:right;font-variant-numeric:tabular-nums}
@@ -245,8 +248,24 @@ const TIPS=[
  "Жаңа телефон алмай тұрып ойлан: ескісі әлі жақсы жұмыс істей ме?",
  "Әр салымыңды жазып жүр. Өсіп келе жатқан соманы көру — ең күшті мотивация.",
 ];
-const LEVELS=[[24,"Теңіз",5],[12,"Көл",4],[6,"Өзен",3],[3,"Бұлақ",2],[1,"Тамшы",1]];
+const LEVELS=[[24,"Шаңырақ",6],[12,"Шатыр",5],[9,"Терезе-есік",4],[6,"Қабырға",3],[3,"Іргетас",2],[1,"Жер",1]];
 const levelOf=b=>{for(const [n,t,c] of LEVELS)if(b>=n)return {t,c};return null};
+function houseSVG(lv){
+  const done=k=>lv>=k, plan='fill="none" stroke="var(--h-plan)" stroke-width="2" stroke-dasharray="5 4"';
+  return `<svg class="house" viewBox="0 0 240 170" role="img" aria-label="Үй кезеңі ${lv} / 6">
+   <rect x="0" y="146" width="240" height="24" rx="4" fill="${done(1)?"var(--h-ground)":"var(--h-plan)"}" opacity="${done(1)?1:.35}"/>
+   ${done(1)?`<path d="M14 146h10M40 146h6M196 146h12M222 146h6" stroke="var(--card)" stroke-width="2" opacity=".4"/>`:""}
+   ${done(2)?`<rect x="36" y="134" width="168" height="12" fill="var(--h-found)"/><path d="M36 140h168" stroke="var(--card)" stroke-width="1" opacity=".5"/>`:`<rect x="36" y="134" width="168" height="12" ${plan}/>`}
+   ${done(3)?`<rect x="48" y="74" width="144" height="60" fill="var(--h-wall)"/><path d="M48 89h144M48 104h144M48 119h144M84 74v15M120 74v15M156 74v15M66 89v15M102 89v15M138 89v15M174 89v15M84 104v15M120 104v15M156 104v15M66 119v15M102 119v15M138 119v15M174 119v15" stroke="var(--card)" stroke-width="1" opacity=".35"/>`:`<rect x="48" y="74" width="144" height="60" ${plan}/>`}
+   ${done(4)?`<rect x="108" y="98" width="24" height="36" rx="2" fill="var(--h-door)"/><circle cx="127" cy="117" r="1.6" fill="var(--h-light)"/>
+     <rect x="62" y="88" width="30" height="24" rx="2" fill="${done(6)?"var(--h-light)":"var(--h-win)"}"/><rect x="148" y="88" width="30" height="24" rx="2" fill="${done(6)?"var(--h-light)":"var(--h-win)"}"/>
+     <path d="M77 88v24M62 100h30M163 88v24M148 100h30" stroke="var(--card)" stroke-width="2"/>`
+     :`<rect x="108" y="98" width="24" height="36" ${plan}/><rect x="62" y="88" width="30" height="24" ${plan}/><rect x="148" y="88" width="30" height="24" ${plan}/>`}
+   ${done(5)?`<path d="M36 76 120 22l84 54z" fill="var(--h-roof)"/><rect x="160" y="34" width="14" height="26" fill="var(--h-roof)"/>`:`<path d="M36 76 120 22l84 54z" ${plan}/>`}
+   ${done(6)?`<circle cx="120" cy="52" r="10" fill="none" stroke="var(--h-light)" stroke-width="3"/><path d="M110 52h20M120 42v20M113 45l14 14M127 45l-14 14" stroke="var(--h-light)" stroke-width="1.6"/>
+     <path d="M167 30c-6-6 6-10 0-16" fill="none" stroke="var(--h-plan)" stroke-width="2" stroke-linecap="round"/>`:""}
+  </svg>`;
+}
 const lvChip=b=>{const l=levelOf(b);return l?`<span class="lv lv${l.c}">${l.t}</span>`:""};
 const tipToday=()=>{const d=new Date(),s=new Date(d.getFullYear(),0,0);return TIPS[Math.floor((d-s)/864e5)%TIPS.length]};
 let giving=false;
@@ -285,11 +304,15 @@ function renderMember(tabsHtml=""){
    <div><div class="row" style="justify-content:space-between"><span class="hint">Келесі +2 бонусқа дейін</span><b class="num">${3-toBonus} / 3 ай</b></div><div class="bar"><i style="width:${(3-toBonus)/3*100}%;background:var(--ok)"></i></div></div>
    <div class="hint">${st?`Үзбей ${st} ай салып келесің. Тағы ${toBonus} ай үзбесең, +2 бонус балл.`:`Ай сайын кемінде 10 000 ₸ салып, 3 ай үзбесең +2 бонус балл аласың.`}${mp>=25?" Осы айдың шегіне жеттің.":""}</div>
   </section>`}
+  ${A?"":(()=>{const l=levelOf(best), c=l?l.c:0, nx=[...LEVELS].reverse().find(x=>x[0]>best);
+    return `<section class="card"><div class="row" style="justify-content:space-between"><h2 style="flex:1 1 auto">Менің үйім</h2><span class="hint" style="flex:0 0 auto">${c} / 6 кезең</span></div>
+    ${houseSVG(c)}
+    <div class="hint" style="text-align:center">${l?`Қазір: ${lvChip(best)} `:"Үйің әлі сызба күйінде. "}${nx?`Келесі кезең — <b>${nx[1]}</b>: ${nx[0]} ай үзбей салу керек${st?`, тағы ${Math.max(1,nx[0]-st)} ай`:""}.`:"Үйің толық салынды. Шаңырағың биік болсын!"}</div></section>`})()}
   <section class="card" style="background:var(--gold-soft);border-color:transparent"><div class="eyebrow">Күннің кеңесі</div><div style="font-size:16px">${esc(tipToday())}</div></section>
   ${A?"":faceCard()}
   <section class="card"><h2>Рейтинг</h2><div class="hint">Тек балл көрсетіледі. Кім қанша салғанын ешкім көрмейді.</div>${topList(me.top)}</section>
-  <section class="card"><h2>Деңгейлер</h2><div class="hint">Үзбей салған ең ұзақ кезеңіңе қарай беріледі. Бір рет алынған деңгей сақталады, ақша қайтарып алса да түспейді.</div>
-   <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow"><span class="lv lv${LEVELS.find(x=>x[1]===t)[2]}">${t}</span></span><span class="hint">${n} ай үзбей</span>${!A&&best>=n?`<span class="pill ok">Алдың</span>`:""}</div>`).join("")}</div></section>
+  <section class="card"><h2>Үй салу кезеңдері</h2><div class="hint">Ай сайын кемінде 10 000 ₸ үзбей салсаң, үйің кезең-кезеңімен бой көтереді. Бір рет салынған кезең бұзылмайды, ақша қайтарып алса да сақталады.</div>
+   <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow"><span class="lv lv${LEVELS.find(x=>x[1]===t)[2]}">${t}</span></span><span class="hint">${n} ай үзбей</span>${!A&&best>=n?`<span class="pill ok">Салынды</span>`:""}</div>`).join("")}</div></section>
   ${A?"":`<section class="card"><h2>Менің салымдарым</h2>${(me.withdrawals||[]).length?`<div class="list" style="margin-bottom:6px">${me.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><span class="pill no">Қайтарылды</span></div>`).join("")}</div>`:""}${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. «Үлес қосу» батырмасын басыңыз.</div>`}</section>`}
   ${RULES}`;
 }
