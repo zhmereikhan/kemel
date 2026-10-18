@@ -14,12 +14,14 @@
   --ink:#16302f; --paper:#f3f5f2; --card:#ffffff; --line:#d9e0dc; --mute:#5e706c;
   --vault:#1d3b3a; --vault-fg:#eaf2ee; --gold:#c9932e; --gold-soft:#f6ead1;
   --ok:#2f7d4f; --ok-soft:#e1f1e6; --warn:#a86a10; --warn-soft:#fbefd8; --bad:#b23b3b; --bad-soft:#f8e2e2;
+  --l1:#e3f1f7; --l1f:#2d6f8a; --l2:#d8f0ea; --l2f:#1f7a66; --l3:#d9e6fb; --l3f:#2856a8; --l4:#e4defa; --l4f:#5236a8; --l5:#14365c; --l5f:#f3d58a;
   --display:"Rubik",system-ui,sans-serif; --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root{
   --ink:#e4ece9; --paper:#0f1817; --card:#172221; --line:#2a3836; --mute:#93a5a1;
   --vault:#132a29; --vault-fg:#eaf2ee; --gold:#e0b158; --gold-soft:#3a2f17;
+  --l1:#16313b; --l1f:#8fd0ea; --l2:#123329; --l2f:#7fdcc3; --l3:#17284a; --l3f:#9dbcf5; --l4:#251c47; --l4f:#c3b3f7; --l5:#f0cf7d; --l5f:#14263f;
   --ok:#6cc48f; --ok-soft:#173326; --warn:#e3a94a; --warn-soft:#3a2a12; --bad:#ec8080; --bad-soft:#3b1d1d;
   color-scheme:dark}}
 *{box-sizing:border-box}
@@ -71,6 +73,13 @@ button:disabled{opacity:.55;cursor:wait}
 .me-row{background:var(--gold-soft);margin:0 -10px;padding-left:10px;padding-right:10px;border-radius:10px;border-top-color:transparent}
 .pill{font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
 .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.wait{background:var(--warn-soft);color:var(--warn)} .pill.no{background:var(--bad-soft);color:var(--bad)}
+.lv{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;flex:0 0 auto}
+.lv::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.lv1{background:var(--l1);color:var(--l1f)} .lv2{background:var(--l2);color:var(--l2f)} .lv3{background:var(--l3);color:var(--l3f)} .lv4{background:var(--l4);color:var(--l4f)} .lv5{background:var(--l5);color:var(--l5f)}
+.rt{display:grid;grid-template-columns:28px minmax(0,1fr) 52px 48px 52px;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.rt.hd{border-top:none;padding:0 0 4px;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.rt>.n{text-align:right;font-variant-numeric:tabular-nums}
+.rt .who{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;min-width:0}
 .msg{padding:10px 12px;border-radius:10px;font-size:14px}
 .msg.err{background:var(--bad-soft);color:var(--bad)} .msg.ok{background:var(--ok-soft);color:var(--ok)}
 .tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
@@ -197,7 +206,7 @@ function renderLogin(reg){
 }
 function topList(rows){
   if(!rows.length)return `<div class="empty">Әзірге расталған салым жоқ. Бірінші салым түскенде рейтинг осы жерде пайда болады.</div>`;
-  return `<div class="list">${rows.map((r,i)=>`<div class="li ${r.me?"me-row":""}"><span class="place ${i===0?"p1":""}">${i+1}</span><span class="grow name">${esc(r.name)}${r.me?" · сіз":""}</span><b class="num">${pts(r.points)} балл</b></div>`).join("")}</div>`;
+  return `<div><div class="rt hd"><span></span><span>Аты</span><span class="n">Негізгі</span><span class="n">Бонус</span><span class="n">Барлығы</span></div>${rows.map((r,i)=>`<div class="rt ${r.me?"me-row":""}"><span class="place ${i===0?"p1":""}">${i+1}</span><span class="who"><span class="name">${esc(r.name)}${r.me?" · сіз":""}</span>${lvChip(r.best)}</span><span class="n">${pts(r.points-r.bonus)}</span><span class="n">${r.bonus?"+"+pts(r.bonus):"—"}</span><b class="n">${pts(r.points)}</b></div>`).join("")}</div>`;
 }
 const pill=s=>s==="confirmed"?`<span class="pill ok">Расталды</span>`:s==="pending"?`<span class="pill wait">Күтуде</span>`:`<span class="pill no">Қабылданбады</span>`;
 function faceCard(){
@@ -236,8 +245,9 @@ const TIPS=[
  "Жаңа телефон алмай тұрып ойлан: ескісі әлі жақсы жұмыс істей ме?",
  "Әр салымыңды жазып жүр. Өсіп келе жатқан соманы көру — ең күшті мотивация.",
 ];
-const LEVELS=[[24,"Теңіз"],[12,"Көл"],[6,"Өзен"],[3,"Бұлақ"],[1,"Тамшы"]];
-const levelOf=b=>{for(const [n,t] of LEVELS)if(b>=n)return t;return null};
+const LEVELS=[[24,"Теңіз",5],[12,"Көл",4],[6,"Өзен",3],[3,"Бұлақ",2],[1,"Тамшы",1]];
+const levelOf=b=>{for(const [n,t,c] of LEVELS)if(b>=n)return {t,c};return null};
+const lvChip=b=>{const l=levelOf(b);return l?`<span class="lv lv${l.c}">${l.t}</span>`:""};
 const tipToday=()=>{const d=new Date(),s=new Date(d.getFullYear(),0,0);return TIPS[Math.floor((d-s)/864e5)%TIPS.length]};
 let giving=false;
 function payInfoBlock(){
@@ -266,10 +276,11 @@ function renderMember(tabsHtml=""){
     ${A?"":`<div class="hint">Қор иесі ақша түскенін көрген соң растайды. Сосын ғана сомаға және балға қосылады.</div>`}
    </form></section>`:""}
   ${noteHtml()}
-  ${A?"":`<section class="card"><div class="row" style="justify-content:space-between"><div class="eyebrow" style="flex:1 1 auto">${esc(me.name)}</div>${lv?`<span class="pill ok" style="flex:0 0 auto">${lv}</span>`:""}</div>
-   <div class="stats"><div class="stat"><b class="num">${pts(me.points)}</b><span>балл${me.bonus?` · оның ${me.bonus} бонус`:""}</span></div>
+  ${A?"":`<section class="card"><div class="row" style="justify-content:space-between"><div class="eyebrow" style="flex:1 1 auto">${esc(me.name)}</div>${lvChip(best)}</div>
+   <div class="stats"><div class="stat"><b class="num">${pts((me.points||0)-(me.bonus||0))}</b><span>негізгі балл</span></div><div class="stat"><b class="num" style="color:var(--ok)">+${pts(me.bonus)}</b><span>бонус балл</span></div>
     <div class="stat"><b class="num">${me.rank||"—"}<small style="font-size:14px;color:var(--mute)"> / ${me.members}</small></b><span>рейтингтегі орын</span></div>
-    <div class="stat"><b class="num">${st}</b><span>ай үзбей</span></div></div>
+</div>
+   <div class="row hint" style="justify-content:space-between"><span>Барлығы <b class="num" style="color:var(--ink)">${pts(me.points)} балл</b></span><span>Үзбей <b class="num" style="color:var(--ink)">${st} ай</b></span></div>
    <div><div class="row" style="justify-content:space-between"><span class="hint">Осы айдың балы</span><b class="num">${pts(mp)} / 25</b></div><div class="bar"><i style="width:${Math.min(100,mp/25*100)}%"></i></div></div>
    <div><div class="row" style="justify-content:space-between"><span class="hint">Келесі +2 бонусқа дейін</span><b class="num">${3-toBonus} / 3 ай</b></div><div class="bar"><i style="width:${(3-toBonus)/3*100}%;background:var(--ok)"></i></div></div>
    <div class="hint">${st?`Үзбей ${st} ай салып келесің. Тағы ${toBonus} ай үзбесең, +2 бонус балл.`:`Ай сайын кемінде 10 000 ₸ салып, 3 ай үзбесең +2 бонус балл аласың.`}${mp>=25?" Осы айдың шегіне жеттің.":""}</div>
@@ -277,8 +288,8 @@ function renderMember(tabsHtml=""){
   <section class="card" style="background:var(--gold-soft);border-color:transparent"><div class="eyebrow">Күннің кеңесі</div><div style="font-size:16px">${esc(tipToday())}</div></section>
   ${A?"":faceCard()}
   <section class="card"><h2>Рейтинг</h2><div class="hint">Тек балл көрсетіледі. Кім қанша салғанын ешкім көрмейді.</div>${topList(me.top)}</section>
-  <section class="card"><h2>Деңгейлер</h2><div class="hint">Үзбей салған ең ұзақ кезеңіңе қарай беріледі.</div>
-   <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow name">${t}</span><span class="hint">${n} ай үзбей</span>${!A&&best>=n?`<span class="pill ok">Алдың</span>`:""}</div>`).join("")}</div></section>
+  <section class="card"><h2>Деңгейлер</h2><div class="hint">Үзбей салған ең ұзақ кезеңіңе қарай беріледі. Бір рет алынған деңгей сақталады, ақша қайтарып алса да түспейді.</div>
+   <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow"><span class="lv lv${LEVELS.find(x=>x[1]===t)[2]}">${t}</span></span><span class="hint">${n} ай үзбей</span>${!A&&best>=n?`<span class="pill ok">Алдың</span>`:""}</div>`).join("")}</div></section>
   ${A?"":`<section class="card"><h2>Менің салымдарым</h2>${(me.withdrawals||[]).length?`<div class="list" style="margin-bottom:6px">${me.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><span class="pill no">Қайтарылды</span></div>`).join("")}</div>`:""}${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. «Үлес қосу» батырмасын басыңыз.</div>`}</section>`}
   ${RULES}`;
 }
@@ -416,7 +427,7 @@ function renderAdmin(){
   }else if(tab==="members"){
     const list=adm.members.filter(m=>!m.is_admin);
     body=`<section class="card"><h2>Салымшылар · ${list.length}</h2><div class="hint">Біреуіне ақшасын қайтарсаң, атын басып «Қайтарып бердім» деп жаз.</div>${list.length?`<div class="list">${list.map((m,i)=>{const open=openMember===m.id;return `<div style="border-top:1px solid var(--line)">
-      <button class="li" data-mem="${m.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 0;width:100%"><span class="place">${i+1}</span><div class="grow"><div class="name">${esc(m.full_name)}</div><div class="hint num">+${esc(m.phone)}</div></div><div style="text-align:right"><b class="num">${pts(m.points)} балл</b><div class="hint num">${money(m.total)}</div></div></button>
+      <button class="li" data-mem="${m.id}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 0;width:100%"><span class="place">${i+1}</span><div class="grow"><div class="name">${esc(m.full_name)} ${lvChip(m.best)}</div><div class="hint num">+${esc(m.phone)}</div></div><div style="text-align:right"><b class="num">${pts(m.points)} балл</b><div class="hint num">${pts(m.points-m.bonus)} + ${pts(m.bonus)} бонус</div><div class="hint num">${money(m.total)}</div></div></button>
       ${open?`<div class="card" style="margin-bottom:10px;background:var(--paper)">
         <div class="hint num">Салғаны ${money(m.contributed)} · қайтарылғаны ${money(m.contributed-m.total)} · қорда ${money(m.total)}</div>
         ${m.withdrawals.length?`<div class="list">${m.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><button class="small" data-wdel="${w.id}">${armed==="w"+w.id?"Растау":"Өшіру"}</button></div>`).join("")}</div>`:""}
