@@ -279,7 +279,7 @@ function payInfoBlock(){
    <button class="small" id="copyPay" type="button" style="justify-self:start">Көшіру</button></div>`;
 }
 function renderMember(tabsHtml=""){
-  const A=me.is_admin, own=A?((adm.members.find(m=>m.is_admin)||{}).total||0):0;
+  const A=me.is_admin, P=!A||me.grp==="biz", own=me.owner_total||0;
   const mp=me.month_points||0, st=me.streak||0, best=me.best||0, lv=levelOf(best);
   const toBonus=3-(st%3);
   return `${head(`<button class="small" id="out">Шығу</button>`)}
@@ -295,7 +295,7 @@ function renderMember(tabsHtml=""){
    ${me.fund>0?`<div class="bar" style="display:flex"><i style="width:${me.owner_total/me.fund*100}%;border-radius:0"></i><i style="width:${me.teachers_total/me.fund*100}%;background:var(--ok);border-radius:0"></i></div>
    <div class="row hint" style="gap:14px"><span style="flex:0 0 auto"><span style="color:var(--gold)">●</span> Қор иесі</span><span style="flex:0 0 auto"><span style="color:var(--ok)">●</span> ${GN[me.grp]}</span></div>`:""}
    <div class="hint">${me.grp==="biz"?"Кәсіпкерлердің":"Ұстаздардың"} әрқайсысы қанша салғаны көрсетілмейді, тек жалпы сомасы.</div></section>
-  ${giving?`<section class="card"><h2>Үлес қосу</h2>${A?`<div class="hint">Сенің салымың бірден расталады. Барлығы салғаның: <b class="num">${money(own)}</b></div>`:payInfoBlock()}
+  ${giving?`<section class="card"><h2>Үлес қосу</h2>${A?`<div class="hint">Сенің салымың бірден расталады${me.grp==="biz"?" және рейтингте балл болып есептеледі":""}. Осы қорға барлығы салғаның: <b class="num">${money(own)}</b></div>`:payInfoBlock()}
    <form id="payF" class="card" style="border:none;padding:0">
     <div class="row"><label for="pAmt">Аударған сомаңыз, ₸<input id="pAmt" inputmode="numeric" placeholder="50 000" required></label>
     <label for="pDate">Күні<input id="pDate" type="date" value="${today()}" max="${today()}" required></label></div>
@@ -305,7 +305,7 @@ function renderMember(tabsHtml=""){
     ${A?"":`<div class="hint">Қор иесі ақша түскенін көрген соң растайды. Сосын ғана сомаға және балға қосылады.</div>`}
    </form></section>`:""}
   ${noteHtml()}
-  ${A?"":`<section class="card"><div class="row" style="justify-content:space-between"><div class="eyebrow" style="flex:1 1 auto">${esc(me.name)}</div>${lvChip(best)}</div>
+  ${!P?"":`<section class="card"><div class="row" style="justify-content:space-between"><div class="eyebrow" style="flex:1 1 auto">${esc(me.name)}</div>${lvChip(best)}</div>
    <div class="stats"><div class="stat"><b class="num">${pts((me.points||0)-(me.bonus||0))}</b><span>негізгі балл</span></div><div class="stat"><b class="num" style="color:var(--ok)">+${pts(me.bonus)}</b><span>бонус балл</span></div>
     <div class="stat"><b class="num">${me.rank||"—"}<small style="font-size:14px;color:var(--mute)"> / ${me.members}</small></b><span>рейтингтегі орын</span></div>
 </div>
@@ -314,7 +314,7 @@ function renderMember(tabsHtml=""){
    <div><div class="row" style="justify-content:space-between"><span class="hint">Келесі +${pts(me.bstep)} бонусқа дейін</span><b class="num">${3-toBonus} / 3 ай</b></div><div class="bar"><i style="width:${(3-toBonus)/3*100}%;background:var(--ok)"></i></div></div>
    <div class="hint">${st?`Үзбей ${st} ай салып келесің. Тағы ${toBonus} ай үзбесең, +${pts(me.bstep)} бонус балл.`:`Ай сайын кемінде ${money(me.smin)} салып, 3 ай үзбесең +${pts(me.bstep)} бонус балл аласың.`}${mp>=me.cap?" Осы айдың шегіне жеттің.":""}</div>
   </section>`}
-  ${A?"":(()=>{const l=levelOf(best), c=l?l.c:0, nx=[...LEVELS].reverse().find(x=>x[0]>best);
+  ${!P?"":(()=>{const l=levelOf(best), c=l?l.c:0, nx=[...LEVELS].reverse().find(x=>x[0]>best);
     return `<section class="card"><div class="row" style="justify-content:space-between"><h2 style="flex:1 1 auto">Менің үйім</h2><span class="hint" style="flex:0 0 auto">${c} / 6 кезең</span></div>
     ${houseSVG(c)}
     <div class="hint" style="text-align:center">${l?`Қазір: ${lvChip(best)} `:"Үйің әлі сызба күйінде. "}${nx?`Келесі кезең — <b>${nx[1]}</b>: ${nx[0]} ай үзбей салу керек${st?`, тағы ${Math.max(1,nx[0]-st)} ай`:""}.`:"Үйің толық салынды. Шаңырағың биік болсын!"}</div></section>`})()}
@@ -322,8 +322,8 @@ function renderMember(tabsHtml=""){
   ${A?"":faceCard()}
   <section class="card"><h2>Рейтинг</h2><div class="hint">Тек балл көрсетіледі. Кім қанша салғанын ешкім көрмейді.</div>${topList(me.top)}</section>
   <section class="card"><h2>Үй салу кезеңдері</h2><div class="hint">Ай сайын кемінде ${money(me.smin)} үзбей салсаң, үйің кезең-кезеңімен бой көтереді. Бір рет салынған кезең бұзылмайды, ақша қайтарып алса да сақталады.</div>
-   <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow"><span class="lv lv${LEVELS.find(x=>x[1]===t)[2]}">${t}</span></span><span class="hint">${n} ай үзбей</span>${!A&&best>=n?`<span class="pill ok">Салынды</span>`:""}</div>`).join("")}</div></section>
-  ${A?"":`<section class="card"><h2>Менің салымдарым</h2>${(me.withdrawals||[]).length?`<div class="list" style="margin-bottom:6px">${me.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><span class="pill no">Қайтарылды</span></div>`).join("")}</div>`:""}${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. «Үлес қосу» батырмасын басыңыз.</div>`}</section>`}
+   <div class="list">${[...LEVELS].reverse().map(([n,t])=>`<div class="li"><span class="grow"><span class="lv lv${LEVELS.find(x=>x[1]===t)[2]}">${t}</span></span><span class="hint">${n} ай үзбей</span>${P&&best>=n?`<span class="pill ok">Салынды</span>`:""}</div>`).join("")}</div></section>
+  ${!P?"":`<section class="card"><h2>Менің салымдарым</h2>${(me.withdrawals||[]).length?`<div class="list" style="margin-bottom:6px">${me.withdrawals.map(w=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">−${money(w.amount)}</div><div class="hint">${fmtD(w.paid_on)}${w.note?" · "+esc(w.note):""}</div></div><span class="pill no">Қайтарылды</span></div>`).join("")}</div>`:""}${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. «Үлес қосу» батырмасын басыңыз.</div>`}</section>`}
   ${rules()}`;
 }
 function payInfoCard(){
