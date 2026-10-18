@@ -222,12 +222,25 @@ function renderMember(){
   <section class="card"><h2>Менің салымдарым</h2>${me.history.length?`<div class="list">${me.history.map(h=>`<div class="li"><div class="grow"><div class="num" style="font-weight:600">${money(h.amount)}</div><div class="hint">${fmtD(h.paid_on)}${h.note?" · "+esc(h.note):""}</div></div>${pill(h.status)}${h.status==="pending"?`<button class="small" data-cancel="${h.id}">Өшіру</button>`:""}</div>`).join("")}</div>`:`<div class="empty">Әлі салым жоқ. Ақша аударған соң жоғарыдағы формаға жазыңыз.</div>`}</section>
   ${RULES}`;
 }
+function ownerCard(){
+  const own=(adm.members.find(m=>m.is_admin)||{}).total||0;
+  return `<section class="card"><h2>Өз салымым</h2><div class="hint">Сенің салымың бірден расталады және жалпы сомаға қосылады. Рейтингке кірмейді.</div>
+   <div class="row" style="justify-content:space-between"><span class="hint">Барлығы салғаным</span><b class="num">${money(own)}</b></div>
+   <form id="payF" class="card" style="border:none;padding:0">
+    <div class="row"><label for="pAmt">Сомасы, ₸<input id="pAmt" inputmode="numeric" placeholder="500 000" required></label>
+    <label for="pDate">Күні<input id="pDate" type="date" value="${today()}" max="${today()}" required></label></div>
+    <label for="pNote">Ескерту (міндетті емес)<input id="pNote" maxlength="200" placeholder="Мысалы, бастапқы салым"></label>
+    <div class="hint" id="pPts"></div>
+    <button class="pri" type="submit" id="payBtn">Қорға қосу</button>
+   </form></section>`;
+}
 function renderAdmin(){
   const n1=adm.new_members.length,n2=adm.pending.length;
   const tabs=`<div class="tabs"><button data-tab="home" class="${tab==="home"?"on":""}">Растау${n1+n2?`<span class="badge">${n1+n2}</span>`:""}</button><button data-tab="members" class="${tab==="members"?"on":""}">Салымшылар</button><button data-tab="top" class="${tab==="top"?"on":""}">Рейтинг</button></div>`;
   let body="";
   if(tab==="home"){
     body=`<section class="card"><h2>Жаңа салымшылар</h2>${n1?`<div class="list">${adm.new_members.map(m=>`<div class="li"><div class="grow"><div class="name">${esc(m.full_name)}</div><div class="hint num">+${esc(m.phone)} · ${fmtD(m.created_at)}</div></div><button class="small pri" data-mok="${m.id}">Растау</button><button class="small" data-mno="${m.id}">Бас тарту</button></div>`).join("")}</div>`:`<div class="empty">Жаңа өтініш жоқ.</div>`}</section>
+    ${ownerCard()}
     <section class="card"><h2>Салымды растау</h2><div class="hint">Ақша шотқа түскенін тексеріп барып растаңыз.</div>${n2?`<div class="list">${adm.pending.map(p=>`<div class="li"><div class="grow"><div class="name">${esc(p.full_name)}</div><div class="num" style="font-weight:600">${money(p.amount)}</div><div class="hint">${fmtD(p.paid_on)}${p.note?" · "+esc(p.note):""}</div></div><button class="small pri" data-pok="${p.id}">Түсті</button><button class="small" data-pno="${p.id}">Түспеді</button></div>`).join("")}</div>`:`<div class="empty">Расталмаған салым жоқ.</div>`}</section>`;
   }else if(tab==="members"){
     const list=adm.members.filter(m=>!m.is_admin);
@@ -270,12 +283,13 @@ function bind(){
   });
   const amt=$("#pAmt");
   amt?.addEventListener("input",()=>{const v=+amt.value.replace(/\D/g,"");amt.value=v?v.toLocaleString("ru-RU").replace(/\s/g," "):"";
+    if(me.is_admin)return;
     const left=25-(me.month_points||0), p=Math.floor(v/10000);
     $("#pPts").textContent=v?`Осы ай үшін шамамен +${Math.min(p,Math.max(0,left))} балл (расталғаннан кейін)`:"10 000 ₸ = 1 балл"});
   $("#payF")?.addEventListener("submit",async e=>{
     e.preventDefault(); const btn=$("#payBtn"); busy(btn,true); note=null;
     try{ await rpc("coop_add",{p_token:token,p_amount:+amt.value.replace(/\D/g,""),p_date:$("#pDate").value,p_note:$("#pNote").value||null});
-      toast("Жіберілді. Қор иесі растағанын күтіңіз"); await load(); return }
+      toast(me.is_admin?"Қорға қосылды":"Жіберілді. Қор иесі растағанын күтіңіз"); await load(); return }
     catch(err){ note={err:err.message} } busy(btn,false); render();
   });
   document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;note=null;render()}));
